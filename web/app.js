@@ -1,4 +1,4 @@
-const APP_VERSION = "0.2.1-pwa";
+const APP_VERSION = "0.3.0-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
@@ -26,6 +26,8 @@ let currentStatus = null;
 let historyItems = [];
 let activePairCode = null;
 let pairingPoll = null;
+let captchaToken = "";
+let turnstileWidgetId = null;
 let toastTimer = null;
 
 function platformName() {
@@ -275,113 +277,135 @@ async function refreshStatus({ quiet = false } = {}) {
   }
 }
 
-async function beginPairing() {
-  try {
-    const result = await api("pair-start", { method: "POST" }, false);
-    localStorage.setItem(STORAGE.credential, result.credential);
-    activePairCode = result.pairCode;
-    $("#pairCode").textContent = result.pairCode;
-    $("#pairPanel").hidden = false;
-    $("#connectButton").hidden = true;
-    $("#accountStatus").textContent = "Connexion en cours";
-    $("#accountDetail").textContent =
-      "Suis les 3 petites étapes ci-dessous. Le code reste valable 10 minutes.";
-    showPairStep(1);
-    updateBookmarkGuide();
-    startPairPolling();
-  } catch (error) {
-    toast(error.message === "Backend non configuré"
-      ? "Le backend n’est pas encore déployé."
-      : "Impossible de créer le code d’appairage.");
+async function waitForTurnstile(timeoutMs = 10000) {
+  const started = Date.now();
+  while (!window.turnstile) {
+    if (Date.now() - started > timeoutMs) {
+      throw new Error("CAPTCHA indisponible");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
+  return window.turnstile;
 }
 
-function makeBookmarklet() {
-  if (!BACKEND_URL || !activePairCode) return "";
+async function renderTurnstile() {
+  captchaToken = "";
+  const container = $("#turnstileWidget");
+  if (!container) return;
 
-  const backend = JSON.stringify(BACKEND_URL);
-  const code = JSON.stringify(activePairCode);
-  const ref = "cyrxjeppjqsxxjayfrur";
+  const turnstile = await waitForTurnstile();
 
-  const source = `(async()=>{try{
-const B=${backend},C=${code},K="sb-${ref}-auth-token";
-const cs={};document.cookie.split(";").forEach(p=>{const i=p.indexOf("=");if(i>0)cs[p.slice(0,i).trim()]=decodeURIComponent(p.slice(i+1).trim())});
-let ks=Object.keys(cs).filter(k=>k===K||k.startsWith(K+"."));
-ks.sort((a,b)=>{const na=Number(a.split(".").pop()),nb=Number(b.split(".").pop());return(Number.isFinite(na)?na:0)-(Number.isFinite(nb)?nb:0)});
-if(!ks.length)throw new Error("Session WikiMasters introuvable. Connecte-toi puis réessaie.");
-let raw=ks.map(k=>cs[k]).join("");if(raw.startsWith("base64-")){raw=raw.slice(7).replace(/-/g,"+").replace(/_/g,"/");raw+="=".repeat((4-raw.length%4)%4);raw=atob(raw)}
-let s=JSON.parse(raw);if(Array.isArray(s))s=s[0];if(!s||!s.refresh_token)throw new Error("Refresh token introuvable.");
-const r=await fetch(B+"/api/wma?action=pair-complete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pairCode:C,refreshToken:s.refresh_token})});
-if(!r.ok)throw new Error("Appairage refusé ("+r.status+")");alert("WikiMaster Auto connecté ✅ Tu peux revenir dans l’app.");
-}catch(e){alert("WikiMaster Auto : "+e.message)}})()`;
+  if (turnstileWidgetId !== null) {
+    try { turnstile.remove(turnstileWidgetId); } catch {}
+    turnstileWidgetId = null;
+  }
 
-  return "javascript:" + source.replace(/\n/g, "");
-}
-
-function showPairStep(step) {
-  [1, 2, 3].forEach((number) => {
-    const section = $("#pairStep" + number);
-    const dot = $("#wizardDot" + number);
-    if (section) section.hidden = number !== step;
-    if (dot) {
-      dot.classList.toggle("active", number === step);
-      dot.classList.toggle("done", number < step);
+  container.replaceChildren();
+  turnstileWidgetId = turnstile.render(container, {
+    sitekey: "0x4AAAAAAEW_2IAWonrk_N5i",
+    theme: "auto",
+    callback(token) {
+      captchaToken = token;
+      $("#captchaHelp").textContent = "CAPTCHA validé ✓";
+    },
+    "expired-callback"() {
+      captchaToken = "";
+      $("#captchaHelp").textContent = "Le CAPTCHA a expiré. Valide-le à nouveau.";
+    },
+    "error-callback"() {
+      captchaToken = "";
+      $("#captchaHelp").textContent =
+        "Le CAPTCHA n’a pas pu se charger sur cette page.";
     }
   });
 }
 
-function updateBookmarkGuide() {
-  const ios = $("#iosBookmarkGuide");
-  const android = $("#androidBookmarkGuide");
-  const help = $("#bookmarkHelp");
+async function beginPairing() {
+  try {
+    const result = await api("pair-start", { method: "POST" }, false);
+    localStorage.setItem(STORAGE.credential, result.credential);
+    activePairCode = result.pairCode || null;
 
-  if (ios) ios.hidden = !isIOS;
-  if (android) android.hidden = !isAndroid;
+    $("#pairPanel").hidden = false;
+    $("#connectButton").hidden = true;
+    $("#accountStatus").textContent = "Connexion WikiMasters";
+    $("#accountDetail").textContent =
+      "Entre tes identifiants WikiMasters puis valide le CAPTCHA.";
 
-  if (help) {
-    help.textContent = isIOS
-      ? "Une seule petite manipulation dans Safari, à faire une fois."
-      : isAndroid
-        ? "Une seule petite manipulation dans Chrome, à faire une fois."
-        : "Ajoute un favori WikiMaster Auto dans ton navigateur, puis remplace son adresse par celle copiée.";
+    $("#wikiPassword").value = "";
+    $("#captchaHelp").textContent = "Valide le CAPTCHA puis touche “Se connecter”.";
+    await renderTurnstile();
+  } catch (error) {
+    console.error(error);
+    toast("Impossible de préparer la connexion.");
   }
 }
 
-async function copyBookmarklet() {
-  const bookmarklet = makeBookmarklet();
-  if (!bookmarklet) {
-    toast("Relance la connexion pour générer un nouveau code.");
+async function loginWikiMasters() {
+  const email = $("#wikiEmail").value.trim();
+  const passwordInput = $("#wikiPassword");
+  const password = passwordInput.value;
+  const button = $("#loginWikiButton");
+
+  if (!email || !password) {
+    toast("Entre ton email et ton mot de passe WikiMasters.");
+    return;
+  }
+  if (!captchaToken) {
+    toast("Valide d’abord le CAPTCHA.");
     return;
   }
 
+  const oldText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Connexion…";
+
   try {
-    await navigator.clipboard.writeText(bookmarklet);
-  } catch {
-    const area = document.createElement("textarea");
-    area.value = bookmarklet;
-    document.body.appendChild(area);
-    area.select();
-    document.execCommand("copy");
-    area.remove();
-  }
+    const status = await api("login", {
+      method: "POST",
+      body: { email, password, captchaToken }
+    });
 
-  const button = $("#copyBookmarklet");
-  if (button) {
-    const oldText = button.textContent;
-    button.textContent = "Adresse copiée ✓";
-    setTimeout(() => { button.textContent = oldText; }, 1800);
+    passwordInput.value = "";
+    captchaToken = "";
+    currentStatus = status;
+    renderStatus(status);
+    $("#pairPanel").hidden = true;
+    $("#connectButton").hidden = true;
+    toast("Compte WikiMasters connecté ✓");
+    await refreshHistory({ quiet: true });
+  } catch (error) {
+    passwordInput.value = "";
+    captchaToken = "";
+    const message =
+      error.payload?.message ||
+      (error.payload?.error === "login_failed"
+        ? "Connexion refusée par WikiMasters."
+        : "Connexion impossible.");
+    $("#captchaHelp").textContent = message;
+    toast(message);
+    try {
+      if (window.turnstile && turnstileWidgetId !== null) {
+        window.turnstile.reset(turnstileWidgetId);
+      }
+    } catch {}
+  } finally {
+    button.disabled = false;
+    button.textContent = oldText;
   }
-  toast("Adresse copiée. Plus qu’à la coller dans le favori.");
 }
 
-function startPairPolling() {
-  stopPairPolling();
-  pairingPoll = setInterval(() => refreshStatus({ quiet: true }), 2500);
-}
-
-function stopPairPolling() {
-  if (pairingPoll) clearInterval(pairingPoll);
-  pairingPoll = null;
+function cancelLogin() {
+  $("#pairPanel").hidden = true;
+  $("#connectButton").hidden = false;
+  $("#wikiPassword").value = "";
+  captchaToken = "";
+  try {
+    if (window.turnstile && turnstileWidgetId !== null) {
+      window.turnstile.remove(turnstileWidgetId);
+    }
+  } catch {}
+  turnstileWidgetId = null;
 }
 
 async function updateSettings(patch) {
@@ -672,17 +696,12 @@ function setupSettings() {
 
 function setupActions() {
   $("#connectButton").addEventListener("click", beginPairing);
-  $("#copyBookmarklet").addEventListener("click", copyBookmarklet);
+  $("#loginWikiButton").addEventListener("click", loginWikiMasters);
+  $("#cancelLoginButton").addEventListener("click", cancelLogin);
+  $("#wikiPassword").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") loginWikiMasters();
+  });
 
-  const openWiki = () => {
-    window.open("https://www.wiki-masters.com/login", "_blank", "noopener,noreferrer");
-  };
-
-  $("#openWikiMasters").addEventListener("click", openWiki);
-  $("#openWikiMastersFinal").addEventListener("click", openWiki);
-  $("#pairNext1").addEventListener("click", () => showPairStep(2));
-  $("#pairNext2").addEventListener("click", () => showPairStep(3));
-  $("#pairBack").addEventListener("click", () => showPairStep(2));
   $("#disconnectButton").addEventListener("click", disconnectAccount);
   $("#openNowButton").addEventListener("click", openNow);
   $("#pushButton").addEventListener("click", enablePush);
