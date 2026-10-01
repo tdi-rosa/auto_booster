@@ -88,8 +88,29 @@ async function runSchedulerTick() {
   }
 }
 
+async function logAuthCapabilities() {
+  try {
+    const response = await fetch("https://cyrxjeppjqsxxjayfrur.supabase.co/auth/v1/settings", {
+      headers: { apikey: process.env.SUPABASE_ANON_KEY || "" }
+    });
+    const data = await response.json();
+    console.log("WMA_AUTH_CAPS", JSON.stringify({
+      status: response.status,
+      disableSignup: data.disable_signup ?? null,
+      mailerAutoconfirm: data.mailer_autoconfirm ?? null,
+      external: data.external ?? null,
+      captchaEnabled: data.captcha_enabled ?? null,
+      captchaProvider: data.captcha_provider ?? null,
+      phoneAutoconfirm: data.phone_autoconfirm ?? null
+    }));
+  } catch (error) {
+    console.error("WMA_AUTH_CAPS_ERROR", error.message);
+  }
+}
+
 server.listen(port, "0.0.0.0", () => {
   console.log(`WikiMaster Auto backend listening on :${port}`);
+  setTimeout(logAuthCapabilities, 1500);
   setTimeout(runSchedulerTick, 15_000);
   setInterval(runSchedulerTick, 5 * 60_000);
 });
