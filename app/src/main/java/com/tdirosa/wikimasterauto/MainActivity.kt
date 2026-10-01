@@ -5,9 +5,13 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.webkit.CookieManager
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.SeekBar
+import android.widget.Spinner
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -35,6 +39,7 @@ class MainActivity : AppCompatActivity() {
         val loginButton = findViewById<Button>(R.id.loginButton)
         val openNowButton = findViewById<Button>(R.id.openNowButton)
         val refreshHistoryButton = findViewById<Button>(R.id.refreshHistoryButton)
+        val historySortSpinner = findViewById<Spinner>(R.id.historySortSpinner)
         val raritySeekBar = findViewById<SeekBar>(R.id.raritySeekBar)
         val rarityValue = findViewById<TextView>(R.id.rarityValue)
         val statusText = findViewById<TextView>(R.id.statusText)
@@ -50,6 +55,28 @@ class MainActivity : AppCompatActivity() {
         raritySeekBar.max = Rarity.LEGENDARY.rank
         raritySeekBar.progress = savedRank
         renderRarity(savedRank, rarityValue)
+
+        val sortLabels = listOf(
+            "Plus récentes",
+            "Plus anciennes",
+            "Rareté ↓",
+            "Rareté ↑",
+            "Nom A → Z"
+        )
+        historySortSpinner.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            sortLabels
+        )
+        historySortSpinner.setSelection(prefs.getInt("history_sort", 0).coerceIn(0, sortLabels.lastIndex))
+        historySortSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                prefs.edit().putInt("history_sort", position).apply()
+                renderHistory(historyText)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+        }
 
         renderAll(statusText, sessionText, runInfoText, historyText)
 
@@ -69,6 +96,7 @@ class MainActivity : AppCompatActivity() {
                     prefs.edit().putInt("notification_min_rank", progress).apply()
                 }
             }
+
             override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
             override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
         })
@@ -157,16 +185,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderHistory(view: TextView) {
+        val prefs = getSharedPreferences("wikimaster_auto", MODE_PRIVATE)
         val pulls = RareHistoryStore.read(this)
         if (pulls.isEmpty()) {
             view.text = "No notified pulls yet."
             return
         }
 
+        val sorted = when (prefs.getInt("history_sort", 0)) {
+            1 -> pulls.sortedBy { it.pulledAtEpochMs }
+            2 -> pulls.sortedWith(
+                compareByDescending<RarePull> { rarityRank(it.rarity) }
+                    .thenByDescending { it.pulledAtEpochMs }
+            )
+            3 -> pulls.sortedWith(
+                compareBy<RarePull> { rarityRank(it.rarity) }
+                    .thenByDescending { it.pulledAtEpochMs }
+            )
+            4 -> pulls.sortedBy { it.title.lowercase() }
+            else -> pulls.sortedByDescending { it.pulledAtEpochMs }
+        }
+
         val formatter = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
-        view.text = pulls.joinToString("\n\n") { pull ->
+        view.text = sorted.joinToString("\n\n") { pull ->
             val date = formatter.format(Date(pull.pulledAtEpochMs))
             "${pull.rarity}  •  ${pull.title}\n$date"
         }
+    }
+
+    private fun rarityRank(code: String): Int = when (code.uppercase()) {
+        "C" -> 0
+        "PC" -> 1
+        "R" -> 2
+        "SR" -> 3
+        "UR" -> 4
+        "L" -> 5
+        else -> -1
     }
 }
