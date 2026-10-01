@@ -39,10 +39,13 @@ jobs:
           test -f web/logo.svg
 
       - name: Prepare deployment
+        env:
+          WMA_BACKEND_URL: ${{ secrets.WMA_BACKEND_URL }}
         run: |
           rm -rf _site
           cp -R web _site
           printf '{"version":"%s"}\n' "$GITHUB_SHA" > _site/version.json
+          printf 'window.WMA_BACKEND_URL = %s;\n' "$(printf '%s' "$WMA_BACKEND_URL" | python -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" > _site/runtime-config.js
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
