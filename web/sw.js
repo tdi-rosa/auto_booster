@@ -7,7 +7,8 @@ const APP_SHELL = [
   "./app.js?v=design-051",
   "./runtime-config.js?v=design-051",
   "./manifest.webmanifest",
-  "./logo.svg",\n  "./app-icon-v2.svg"
+  "./logo.svg",
+  "./app-icon-v2.svg"
 ];
 
 self.addEventListener("install", (event) => {
