@@ -13,6 +13,50 @@ function anonKey() {
   return env("SUPABASE_ANON_KEY");
 }
 
+export async function loginWithPassword(email, password, captchaToken) {
+  if (!email || !password || !captchaToken) {
+    throw new Error("Identifiants ou CAPTCHA manquants");
+  }
+
+  const response = await fetch(
+    `${SUPABASE_URL}/auth/v1/token?grant_type=password`,
+    {
+      method: "POST",
+      headers: {
+        apikey: anonKey(),
+        Authorization: `Bearer ${anonKey()}`,
+        "Content-Type": "application/json;charset=UTF-8",
+        "X-Client-Info": "supabase-ssr/0.9.0 createBrowserClient",
+        "X-Supabase-Api-Version": "2024-01-01"
+      },
+      body: JSON.stringify({
+        grant_type: "password",
+        email,
+        password,
+        gotrue_meta_security: { captcha_token: captchaToken }
+      }),
+      signal: AbortSignal.timeout(25_000)
+    }
+  );
+
+  const text = await response.text();
+  if (!response.ok) {
+    let message = text.slice(0, 220);
+    try {
+      const parsed = JSON.parse(text);
+      message = parsed.msg || parsed.error_description || parsed.message || message;
+    } catch {}
+    throw new Error(`Connexion WikiMasters refusée (${response.status}) : ${message}`);
+  }
+
+  const session = JSON.parse(text);
+  if (!session.access_token || !session.refresh_token) {
+    throw new Error("WikiMasters a renvoyé une session incomplète");
+  }
+
+  return validateRefreshToken(session.refresh_token);
+}
+
 export async function refreshSession(refreshToken) {
   const response = await fetch(
     `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
