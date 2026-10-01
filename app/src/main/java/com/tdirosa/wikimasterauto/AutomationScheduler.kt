@@ -1,7 +1,9 @@
 package com.tdirosa.wikimasterauto
 
 import android.content.Context
+import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
@@ -22,5 +24,17 @@ object AutomationScheduler {
 
     fun disable(context: Context) {
         WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+    }
+
+    fun runNow(context: Context) {
+        val input = Data.Builder()
+            .putBoolean("manual_run", true)
+            .build()
+
+        val request = OneTimeWorkRequestBuilder<BoosterWorker>()
+            .setInputData(input)
+            .build()
+
+        WorkManager.getInstance(context).enqueue(request)
     }
 }
