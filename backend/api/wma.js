@@ -214,6 +214,11 @@ export default async function handler(req, res) {
     }
 
     if (action === "pair-complete") {
+      console.log("PAIR_COMPLETE_ATTEMPT", {
+        method: req.method,
+        origin: req.headers.origin || "",
+        userAgent: req.headers["user-agent"] || ""
+      });
       if (req.method !== "POST" || !originAllowed(req, res, WIKI_ORIGINS)) {
         return send(res, 403, { error: "forbidden" });
       }
@@ -241,6 +246,7 @@ export default async function handler(req, res) {
       await saveClient(client);
       await consumePairing(pairCode);
 
+      console.log("PAIR_COMPLETE_SUCCESS", { clientId, userId: verified.userId || null });
       return send(res, 200, { ok: true });
     }
 
