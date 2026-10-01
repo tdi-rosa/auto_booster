@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" role="img" aria-label="WikiMaster Auto">
+  <defs>
+    <linearGradient id="g" x1="10" y1="98" x2="98" y2="10" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7C3AED"/>
+      <stop offset=".58" stop-color="#4F46E5"/>
+      <stop offset="1" stop-color="#06B6D4"/>
+    </linearGradient>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#312E81" flood-opacity=".28"/>
+    </filter>
+  </defs>
+  <rect x="7" y="7" width="94" height="94" rx="27" fill="url(#g)" filter="url(#s)"/>
+  <path d="M29 23h50a7 7 0 0 1 7 7v49a7 7 0 0 1-7 7H29a7 7 0 0 1-7-7V30a7 7 0 0 1 7-7Z"
+        fill="none" stroke="white" stroke-opacity=".78" stroke-width="4.5"/>
+  <path d="M59 30 39 57h13l-6 22 25-31H58l1-18Z" fill="#fff"/>
+</svg>
