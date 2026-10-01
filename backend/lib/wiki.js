@@ -185,13 +185,23 @@ async function openOnePack(session) {
   throw lastError || new Error("Pack opening failed");
 }
 
+function sessionExpiresSoon(session, marginSeconds = 120) {
+  const payload = jwtPayload(session?.access_token);
+  const expiresAt = Number(session?.expires_at || payload?.exp || 0);
+  if (!expiresAt) return true;
+  return expiresAt <= Math.floor(Date.now() / 1000) + marginSeconds;
+}
+
 export async function openAllAvailablePacks(storedSession) {
   let session = storedSession;
-  try {
+
+  // Supabase refresh tokens rotate. Refreshing on every scheduler tick burns the
+  // token unnecessarily and can invalidate another client using the same account.
+  // Keep the current access token until it is close to expiry.
+  if (sessionExpiresSoon(storedSession)) {
     session = await refreshSession(storedSession.refresh_token);
-  } catch (error) {
-    console.warn("Supabase refresh unavailable, using current WikiMasters session:", error.message);
   }
+
   const pulledAt = Date.now();
   const cards = [];
   let packsOpened = 0;
