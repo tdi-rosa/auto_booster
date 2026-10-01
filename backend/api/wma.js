@@ -25,7 +25,7 @@ import {
 } from "../lib/storage.js";
 import {
   openAllAvailablePacks,
-  validateImportedSession
+  validateRefreshToken
 } from "../lib/wiki.js";
 
 const RARITY_RANK = { C: 0, PC: 1, R: 2, SR: 3, UR: 4, L: 5 };
@@ -225,7 +225,7 @@ export default async function handler(req, res) {
         return send(res, 404, { error: "pairing_expired" });
       }
 
-      const verified = await validateImportedSession(body.session);
+      const verified = await validateRefreshToken(String(body.refreshToken || ""));
       const client = await getClient(clientId);
       if (!client) {
         return send(res, 404, { error: "client_not_found" });
