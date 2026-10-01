@@ -312,10 +312,12 @@ async function renderTurnstile() {
       captchaToken = "";
       $("#captchaHelp").textContent = "Le CAPTCHA a expiré. Valide-le à nouveau.";
     },
-    "error-callback"() {
+    "error-callback"(code) {
       captchaToken = "";
+      const suffix = code ? ` (erreur ${code})` : "";
       $("#captchaHelp").textContent =
-        "Le CAPTCHA n’a pas pu se charger sur cette page.";
+        "CAPTCHA WikiMasters refusé sur ce domaine" + suffix + ".";
+      console.error("Turnstile error", code);
     }
   });
 }
