@@ -46,20 +46,58 @@
         <button id="disconnectButton" class="button danger" hidden>Déconnecter WikiMasters</button>
       </div>
 
-      <div id="pairPanel" class="pair-panel" hidden>
-        <div class="pair-code-wrap">
-          <span>Code temporaire</span>
-          <strong id="pairCode">—</strong>
+      <div id="pairPanel" class="pair-panel pair-wizard" hidden>
+        <div class="wizard-progress">
+          <span id="wizardDot1" class="wizard-dot active">1</span>
+          <span class="wizard-line"></span>
+          <span id="wizardDot2" class="wizard-dot">2</span>
+          <span class="wizard-line"></span>
+          <span id="wizardDot3" class="wizard-dot">3</span>
         </div>
-        <ol class="pair-steps">
-          <li>Connecte-toi normalement sur WikiMasters.</li>
-          <li>Ajoute un favori Safari/Chrome appelé <b>Connecter WikiMaster Auto</b>.</li>
-          <li>Remplace l’adresse du favori par le code copié ci-dessous.</li>
-          <li>Sur <b>wiki-masters.com</b>, lance ce favori une fois.</li>
-        </ol>
-        <button id="copyBookmarklet" class="button secondary">Copier le favori de connexion</button>
-        <button id="openWikiMasters" class="button secondary">Ouvrir WikiMasters</button>
-        <p class="tiny">Le favori envoie uniquement le refresh token de ta session avec ce code temporaire. Ton mot de passe reste chez WikiMasters.</p>
+
+        <section id="pairStep1" class="pair-step">
+          <div class="pair-step-icon">↗</div>
+          <h3>Connecte-toi à WikiMasters</h3>
+          <p>Ouvre WikiMasters et connecte-toi normalement avec ton compte.</p>
+          <button id="openWikiMasters" class="button primary">Ouvrir WikiMasters</button>
+          <button id="pairNext1" class="button ghost">Je suis connecté</button>
+        </section>
+
+        <section id="pairStep2" class="pair-step" hidden>
+          <div class="pair-step-icon">★</div>
+          <h3>Ajoute le bouton de connexion</h3>
+          <p id="bookmarkHelp">Je prépare les instructions pour ton téléphone…</p>
+
+          <div class="bookmark-name">
+            <span>Nom du favori</span>
+            <strong>WikiMaster Auto</strong>
+          </div>
+
+          <button id="copyBookmarklet" class="button primary">Copier l’adresse du favori</button>
+
+          <div id="iosBookmarkGuide" class="mini-guide" hidden>
+            <b>Sur iPhone :</b>
+            <span>Dans Safari, ajoute cette page aux favoris. Ouvre ensuite tes favoris, maintiens le favori appuyé → Modifier, renomme-le “WikiMaster Auto” et remplace son adresse par ce que tu viens de copier.</span>
+          </div>
+
+          <div id="androidBookmarkGuide" class="mini-guide" hidden>
+            <b>Sur Android :</b>
+            <span>Dans Chrome, ajoute WikiMasters aux favoris. Puis ouvre les favoris → ⋮ / Modifier, renomme-le “WikiMaster Auto” et remplace son adresse par ce que tu viens de copier.</span>
+          </div>
+
+          <button id="pairNext2" class="button ghost">C’est fait</button>
+        </section>
+
+        <section id="pairStep3" class="pair-step" hidden>
+          <div class="pair-step-icon">✓</div>
+          <h3>Dernière étape</h3>
+          <p>Retourne sur WikiMasters, puis ouvre ton favori <b>WikiMaster Auto</b>. C’est tout.</p>
+          <button id="openWikiMastersFinal" class="button primary">Retourner sur WikiMasters</button>
+          <div class="waiting-pill"><span class="spinner"></span> J’attends la connexion…</div>
+          <button id="pairBack" class="button ghost">Revoir l’étape précédente</button>
+        </section>
+
+        <div class="pair-code-subtle">Code de connexion : <span id="pairCode">—</span></div>
       </div>
     </section>
 
