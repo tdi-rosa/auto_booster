@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.3-pwa";
+const APP_VERSION = "0.5.4-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
@@ -340,6 +340,19 @@ async function openNow() {
     const result = await api("open-now", { method: "POST" });
     const count = Array.isArray(result.cards) ? result.cards.length : 0;
     toast(`${result.packsOpened || 0} booster(s), ${count} carte(s) récupérée(s).`);
+
+    if (count > 0) {
+      revealCards = [...result.cards].sort((a, b) =>
+        (RARITY_RANK[b.rarity] ?? 0) - (RARITY_RANK[a.rarity] ?? 0)
+      );
+      revealIndex = 0;
+      revealCutoff = Math.max(...revealCards.map((card) => Number(card.pulledAt || Date.now())));
+      revealCheckedThisLaunch = true;
+      renderNewCardReveal();
+      $("#newCardsModal").hidden = false;
+      document.body.classList.add("modal-open");
+    }
+
     await Promise.all([
       refreshStatus({ quiet: true }),
       refreshHistory({ quiet: true })
