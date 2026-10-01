@@ -38,13 +38,19 @@ jobs:
           test -f web/styles.css
           test -f web/logo.svg
 
+      - name: Prepare deployment
+        run: |
+          rm -rf _site
+          cp -R web _site
+          printf '{"version":"%s"}\n' "$GITHUB_SHA" > _site/version.json
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
 
       - name: Upload PWA
         uses: actions/upload-pages-artifact@v4
         with:
-          path: web
+          path: _site
 
       - name: Deploy
         id: deployment
