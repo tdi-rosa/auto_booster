@@ -71,12 +71,12 @@ async function wikiFetch(path, session, init = {}) {
   });
 }
 
-export async function validateImportedSession(imported) {
-  if (!imported || typeof imported !== "object" || !imported.refresh_token) {
-    throw new Error("Session WikiMasters invalide");
+export async function validateRefreshToken(refreshToken) {
+  if (!refreshToken || typeof refreshToken !== "string") {
+    throw new Error("Refresh token WikiMasters invalide");
   }
 
-  const session = await refreshSession(imported.refresh_token);
+  const session = await refreshSession(refreshToken);
   const test = await wikiFetch("/api/wikibidous", session);
   if (!test.ok) {
     throw new Error(`Session WikiMasters refusée (${test.status})`);
