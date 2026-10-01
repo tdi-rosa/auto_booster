@@ -93,7 +93,17 @@ async function logAuthCapabilities() {
     const response = await fetch("https://cyrxjeppjqsxxjayfrur.supabase.co/auth/v1/settings", {
       headers: { apikey: process.env.SUPABASE_ANON_KEY || "" }
     });
-    const data = await response.json();
+    const text = await response.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch {}
+    if (!data) {
+      console.log("WMA_AUTH_CAPS_RAW", JSON.stringify({
+        status: response.status,
+        contentType: response.headers.get("content-type"),
+        preview: text.slice(0, 180).replace(/\s+/g, " ")
+      }));
+      return;
+    }
     console.log("WMA_AUTH_CAPS", JSON.stringify({
       status: response.status,
       disableSignup: data.disable_signup ?? null,
