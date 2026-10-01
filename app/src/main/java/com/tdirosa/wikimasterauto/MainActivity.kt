@@ -2,6 +2,7 @@ package com.tdirosa.wikimasterauto
 
 import android.Manifest
 import android.content.Intent
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.webkit.CookieManager
@@ -118,7 +119,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderSession(view: TextView) {
         val cookie = CookieManager.getInstance().getCookie(WikiMastersClient.BASE_URL)
-        view.text = if (cookie.isNullOrBlank()) "Not connected" else "Connected to WikiMasters"
+        val connected = !cookie.isNullOrBlank()
+
+        if (connected) {
+            view.text = "●  Compte WikiMasters connecté"
+            view.setTextColor(Color.parseColor("#166534"))
+            view.setBackgroundResource(R.drawable.status_connected_background)
+        } else {
+            view.text = "●  Non connecté"
+            view.setTextColor(Color.parseColor("#991B1B"))
+            view.setBackgroundResource(R.drawable.status_disconnected_background)
+        }
     }
 
     private fun renderRarity(rank: Int, view: TextView) {
