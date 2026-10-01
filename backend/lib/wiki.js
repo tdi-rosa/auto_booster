@@ -115,6 +115,24 @@ async function wikiFetch(path, session, init = {}) {
   });
 }
 
+export async function validateSession(session) {
+  if (!session?.access_token || !session?.refresh_token) {
+    throw new Error("Session WikiMasters invalide");
+  }
+
+  const test = await wikiFetch("/api/wikibidous", session);
+  if (!test.ok) {
+    throw new Error(`Session WikiMasters refusée (${test.status})`);
+  }
+
+  const payload = jwtPayload(session.access_token);
+  return {
+    session,
+    userId: session.user?.id || payload?.sub || null,
+    email: session.user?.email || payload?.email || null
+  };
+}
+
 export async function validateRefreshToken(refreshToken) {
   if (!refreshToken || typeof refreshToken !== "string") {
     throw new Error("Refresh token WikiMasters invalide");
@@ -168,7 +186,12 @@ async function openOnePack(session) {
 }
 
 export async function openAllAvailablePacks(storedSession) {
-  const session = await refreshSession(storedSession.refresh_token);
+  let session = storedSession;
+  try {
+    session = await refreshSession(storedSession.refresh_token);
+  } catch (error) {
+    console.warn("Supabase refresh unavailable, using current WikiMasters session:", error.message);
+  }
   const pulledAt = Date.now();
   const cards = [];
   let packsOpened = 0;
