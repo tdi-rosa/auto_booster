@@ -1,4 +1,4 @@
-const APP_VERSION = "0.1.0-pwa";
+const APP_VERSION = "0.1.1-pwa";
 const STORAGE = {
   interval: "wma_interval",
   rarity: "wma_rarity",
