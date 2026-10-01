@@ -20,10 +20,9 @@ class BoosterWorker(
             val client = WikiMastersClient(applicationContext)
             val result = client.openAllAvailableBoosters()
 
-            // Keep every pulled card in history.
+            // History always keeps every opened card, regardless of notification threshold.
             RareHistoryStore.addAll(applicationContext, result.cards)
 
-            // The rarity threshold only controls notifications.
             val minimumRank = prefs.getInt("notification_min_rank", Rarity.ULTRA_RARE.rank)
             val cardsToNotify = result.cards.filter { it.rarity.rank >= minimumRank }
 
@@ -31,18 +30,22 @@ class BoosterWorker(
                 NotificationHelper.notifyRarePulls(applicationContext, cardsToNotify)
             }
 
-            prefs.edit()
-                .putLong("last_open_at", System.currentTimeMillis())
+            val now = System.currentTimeMillis()
+            val editor = prefs.edit()
+                .putLong("last_open_at", now)
                 .putInt("last_cards_opened", result.cards.size)
                 .putInt("last_boosters_opened", result.boostersOpened)
                 .putInt("last_packs_remaining", result.packsRemaining)
                 .putString("last_error", "")
-                .apply()
 
-            if (automaticEnabled) {
-                AutomationScheduler.scheduleNext(applicationContext, 100)
+            if (!manualRun && automaticEnabled) {
+                editor.putLong(
+                    "next_run_at",
+                    now + AutomationScheduler.intervalMinutes(applicationContext) * 60_000L
+                )
             }
 
+            editor.apply()
             Result.success()
         } catch (e: WikiMastersNotConfiguredException) {
             prefs.edit().putString("last_error", e.message ?: "Session missing").apply()
@@ -52,10 +55,6 @@ class BoosterWorker(
             prefs.edit()
                 .putString("last_error", e.message ?: e.javaClass.simpleName)
                 .apply()
-
-            if (!manualRun && automaticEnabled) {
-                AutomationScheduler.scheduleNext(applicationContext, 15)
-            }
             Result.success()
         }
     }
