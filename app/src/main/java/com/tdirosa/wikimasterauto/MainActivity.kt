@@ -419,7 +419,7 @@ class MainActivity : AppCompatActivity() {
         return if (rest == 0L) {
             "${hours} h"
         } else {
-            "${hours} h ${rest}"
+            "${hours} h ${rest} min"
         }
     }
 }
