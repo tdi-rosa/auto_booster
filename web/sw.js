@@ -1,4 +1,4 @@
-const CACHE_NAME = "wikimaster-auto-pwa-v9";
+const CACHE_NAME = "wikimaster-auto-pwa-v10";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -6,9 +6,9 @@ const APP_SHELL = [
   "./styles.css?v=design-051",
   "./app.js?v=design-051",
   "./runtime-config.js?v=design-051",
-  "./manifest.webmanifest",
+  "./manifest.webmanifest?v=icon-v3",
   "./logo.svg",
-  "./app-icon-v2.svg"
+  "./app-icon-v3.svg"
 ];
 
 self.addEventListener("install", (event) => {
@@ -75,8 +75,8 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "WikiMaster Auto";
   const options = {
     body: payload.body || "Nouvelle activité WikiMasters.",
-    icon: "./app-icon-v2.svg",
-    badge: "./app-icon-v2.svg",
+    icon: "./app-icon-v3.svg",
+    badge: "./app-icon-v3.svg",
     data: {
       url: payload.url || "./"
     }
