@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.4-pwa";
+const APP_VERSION = "0.5.5-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
@@ -595,8 +595,8 @@ function renderNewCardReveal() {
   stage.appendChild(article);
 
   $("#newCardsProgress").textContent = `${revealIndex + 1} / ${revealCards.length}`;
-  $("#newCardNext").textContent =
-    revealIndex === revealCards.length - 1 ? "Terminer" : "Suivante";
+  $("#newCardPrev").disabled = revealIndex === 0;
+  $("#newCardNext").disabled = revealIndex === revealCards.length - 1;
 }
 
 function finishNewCardReveal() {
@@ -611,11 +611,14 @@ function finishNewCardReveal() {
 }
 
 function nextNewCardReveal() {
-  if (revealIndex >= revealCards.length - 1) {
-    finishNewCardReveal();
-    return;
-  }
+  if (revealIndex >= revealCards.length - 1) return;
   revealIndex += 1;
+  renderNewCardReveal();
+}
+
+function previousNewCardReveal() {
+  if (revealIndex <= 0) return;
+  revealIndex -= 1;
   renderNewCardReveal();
 }
 
@@ -761,6 +764,8 @@ function setupActions() {
   $("#pushButton").addEventListener("click", enablePush);
   $("#refreshHistory").addEventListener("click", () => refreshHistory());
   $("#newCardNext").addEventListener("click", nextNewCardReveal);
+  $("#newCardPrev").addEventListener("click", previousNewCardReveal);
+  $(".new-cards-backdrop").addEventListener("click", finishNewCardReveal);
 
   $("#installButton").addEventListener("click", async () => {
     if (isStandalone) return;
