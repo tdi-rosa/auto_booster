@@ -9,13 +9,12 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 object AutomationScheduler {
     private const val PREFS = "wikimaster_auto"
     private const val AUTO_WORK_NAME = "wikimaster-booster-auto"
-    private const val MANUAL_WORK_NAME = "wikimaster-booster-manual"
+    const val MANUAL_WORK_NAME = "wikimaster-booster-manual"
     const val DEFAULT_INTERVAL_MINUTES = 100L
 
     fun intervalMinutes(context: Context): Long =
@@ -24,16 +23,17 @@ object AutomationScheduler {
             .coerceAtLeast(15L)
 
     fun ensureScheduled(context: Context) {
-        enqueuePeriodic(context, ExistingPeriodicWorkPolicy.KEEP)
+        enqueuePeriodic(context, ExistingPeriodicWorkPolicy.KEEP, resetNextRun = false)
     }
 
     fun updateSchedule(context: Context) {
-        enqueuePeriodic(context, ExistingPeriodicWorkPolicy.UPDATE)
+        enqueuePeriodic(context, ExistingPeriodicWorkPolicy.UPDATE, resetNextRun = true)
     }
 
     private fun enqueuePeriodic(
         context: Context,
-        policy: ExistingPeriodicWorkPolicy
+        policy: ExistingPeriodicWorkPolicy,
+        resetNextRun: Boolean
     ) {
         val interval = intervalMinutes(context)
         val constraints = Constraints.Builder()
@@ -54,10 +54,13 @@ object AutomationScheduler {
             request
         )
 
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putLong("next_run_at", System.currentTimeMillis() + interval * 60_000L)
-            .apply()
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val currentNextRun = prefs.getLong("next_run_at", 0L)
+        if (resetNextRun || currentNextRun <= 0L) {
+            prefs.edit()
+                .putLong("next_run_at", System.currentTimeMillis() + interval * 60_000L)
+                .apply()
+        }
     }
 
     fun disable(context: Context) {
@@ -68,7 +71,7 @@ object AutomationScheduler {
             .apply()
     }
 
-    fun runNow(context: Context): UUID {
+    fun runNow(context: Context) {
         val input = Data.Builder()
             .putBoolean("manual_run", true)
             .build()
@@ -87,6 +90,5 @@ object AutomationScheduler {
             ExistingWorkPolicy.KEEP,
             request
         )
-        return request.id
     }
 }
