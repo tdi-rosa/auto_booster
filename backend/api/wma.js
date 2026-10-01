@@ -191,6 +191,21 @@ export default async function handler(req, res) {
       return send(res, 200, { ok: true, service: "wikimaster-auto" });
     }
 
+    if (action === "auth-capabilities") {
+      const response = await fetch("https://cyrxjeppjqsxxjayfrur.supabase.co/auth/v1/settings", {
+        headers: { apikey: env("SUPABASE_ANON_KEY") }
+      });
+      const data = await response.json();
+      return send(res, response.status, {
+        disableSignup: data.disable_signup ?? null,
+        mailerAutoconfirm: data.mailer_autoconfirm ?? null,
+        external: data.external ?? null,
+        captchaEnabled: data.captcha_enabled ?? null,
+        captchaProvider: data.captcha_provider ?? null,
+        phoneAutoconfirm: data.phone_autoconfirm ?? null
+      });
+    }
+
     if (action === "vapid-key") {
       if (!originAllowed(req, res, PWA_ORIGINS)) {
         return send(res, 403, { error: "forbidden" });
