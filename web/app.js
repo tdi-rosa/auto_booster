@@ -1,11 +1,12 @@
-const APP_VERSION = "0.5.2-pwa";
+const APP_VERSION = "0.5.3-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
   credential: "wma_backend_credential",
   interval: "wma_interval",
   rarity: "wma_rarity",
-  historySort: "wma_history_sort"
+  historySort: "wma_history_sort",
+  seenCardsThrough: "wma_seen_cards_through"
 };
 
 const RARITY_RANK = { C: 0, PC: 1, R: 2, SR: 3, UR: 4, L: 5 };
@@ -27,6 +28,10 @@ let historyItems = [];
 let activePairCode = null;
 let pairingPoll = null;
 let toastTimer = null;
+let revealCards = [];
+let revealIndex = 0;
+let revealCutoff = 0;
+let revealCheckedThisLaunch = false;
 
 function platformName() {
   if (isIOS) return "iPhone / iPad";
@@ -382,6 +387,7 @@ async function refreshHistory({ quiet = false } = {}) {
     $("#historyCount").textContent =
       `${result.count || historyItems.length} carte${(result.count || historyItems.length) > 1 ? "s" : ""}`;
     renderHistory();
+    maybeShowNewCards();
   } catch {
     if (!quiet) toast("Impossible de charger l’historique.");
   }
@@ -498,6 +504,106 @@ function renderHistory() {
     article.append(imageWrap, body);
     list.appendChild(article);
   }
+}
+
+function maybeShowNewCards() {
+  if (revealCheckedThisLaunch || !historyItems.length) return;
+
+  const seenThrough = Number(localStorage.getItem(STORAGE.seenCardsThrough) || 0);
+
+  // First install/upgrade: establish a baseline so the entire old history does
+  // not appear as "new". From then on, only genuinely later pulls are revealed.
+  if (!seenThrough) {
+    const baseline = Math.max(...historyItems.map((card) => Number(card.pulledAt || 0)));
+    localStorage.setItem(STORAGE.seenCardsThrough, String(baseline));
+    revealCheckedThisLaunch = true;
+    return;
+  }
+
+  const fresh = historyItems
+    .filter((card) => Number(card.pulledAt || 0) > seenThrough)
+    .sort((a, b) =>
+      (RARITY_RANK[b.rarity] ?? 0) - (RARITY_RANK[a.rarity] ?? 0) ||
+      Number(b.pulledAt || 0) - Number(a.pulledAt || 0)
+    );
+
+  revealCheckedThisLaunch = true;
+  if (!fresh.length) return;
+
+  revealCards = fresh;
+  revealIndex = 0;
+  revealCutoff = Math.max(...fresh.map((card) => Number(card.pulledAt || 0)));
+  renderNewCardReveal();
+  $("#newCardsModal").hidden = false;
+  document.body.classList.add("modal-open");
+}
+
+function renderNewCardReveal() {
+  const card = revealCards[revealIndex];
+  if (!card) return;
+
+  const stage = $("#newCardStage");
+  stage.replaceChildren();
+
+  const article = document.createElement("article");
+  const rarityCode = String(card.rarity || "C").toLowerCase();
+  article.className = `new-card-reveal rarity-card-${rarityCode}`;
+
+  const imageWrap = document.createElement("div");
+  imageWrap.className = "new-card-image-wrap history-image-wrap";
+  const img = document.createElement("img");
+  img.className = "new-card-image history-image";
+  img.alt = "";
+  if (card.imageUrl) {
+    img.src = card.imageUrl;
+    img.addEventListener("error", () => recoverWikipediaImage(card.title, img, imageWrap), { once: true });
+  } else {
+    recoverWikipediaImage(card.title, img, imageWrap);
+  }
+  imageWrap.appendChild(img);
+
+  const info = document.createElement("div");
+  info.className = "new-card-info";
+  const rarity = document.createElement("span");
+  rarity.className = `rarity-badge rarity-${rarityCode}`;
+  rarity.textContent = card.rarity || "C";
+  const title = document.createElement("strong");
+  title.textContent = card.title || "Carte";
+  const stats = document.createElement("span");
+  stats.className = "new-card-stats";
+  stats.textContent = [
+    card.atk != null ? `ATK ${card.atk}` : "",
+    card.def != null ? `DEF ${card.def}` : ""
+  ].filter(Boolean).join("  ·  ");
+  info.append(rarity, title);
+  if (stats.textContent) info.append(stats);
+
+  article.append(imageWrap, info);
+  stage.appendChild(article);
+
+  $("#newCardsProgress").textContent = `${revealIndex + 1} / ${revealCards.length}`;
+  $("#newCardNext").textContent =
+    revealIndex === revealCards.length - 1 ? "Terminer" : "Suivante";
+}
+
+function finishNewCardReveal() {
+  if (revealCutoff) {
+    localStorage.setItem(STORAGE.seenCardsThrough, String(revealCutoff));
+  }
+  $("#newCardsModal").hidden = true;
+  document.body.classList.remove("modal-open");
+  revealCards = [];
+  revealIndex = 0;
+  revealCutoff = 0;
+}
+
+function nextNewCardReveal() {
+  if (revealIndex >= revealCards.length - 1) {
+    finishNewCardReveal();
+    return;
+  }
+  revealIndex += 1;
+  renderNewCardReveal();
 }
 
 function showCardPlaceholder(img, imageWrap) {
@@ -641,6 +747,7 @@ function setupActions() {
   $("#openNowButton").addEventListener("click", openNow);
   $("#pushButton").addEventListener("click", enablePush);
   $("#refreshHistory").addEventListener("click", () => refreshHistory());
+  $("#newCardNext").addEventListener("click", nextNewCardReveal);
 
   $("#installButton").addEventListener("click", async () => {
     if (isStandalone) return;
