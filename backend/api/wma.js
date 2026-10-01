@@ -24,6 +24,7 @@ import {
   unscheduleClient
 } from "../lib/storage.js";
 import {
+  loginWithPassword,
   openAllAvailablePacks,
   validateRefreshToken
 } from "../lib/wiki.js";
@@ -294,6 +295,29 @@ export default async function handler(req, res) {
     const client = await authenticateClient(req);
     if (!client) {
       return send(res, 401, { error: "unauthorized" });
+    }
+
+    if (action === "login" && req.method === "POST") {
+      const body = await readJson(req);
+      const email = String(body.email || "").trim();
+      const password = String(body.password || "");
+      const captchaToken = String(body.captchaToken || "");
+
+      if (!email || !password || !captchaToken) {
+        return send(res, 400, { error: "missing_credentials" });
+      }
+
+      const verified = await loginWithPassword(email, password, captchaToken);
+
+      client.paired = true;
+      client.encryptedSession = encryptJson(verified.session);
+      client.userId = verified.userId;
+      client.email = verified.email || email;
+      client.connectedAt = Date.now();
+      client.lastError = null;
+
+      await saveClient(client);
+      return send(res, 200, publicClient(client, await historyCount(client.id)));
     }
 
     if (action === "status" && req.method === "GET") {
