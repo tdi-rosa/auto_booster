@@ -156,6 +156,59 @@ async function scanWikiMastersTurnstile() {
   }
 }
 
+async function probeAuthEndpoints() {
+  const base = "https://cyrxjeppjqsxxjayfrur.supabase.co";
+  const key = process.env.SUPABASE_ANON_KEY || "";
+  const headers = {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    "Content-Type": "application/json"
+  };
+
+  try {
+    const r = await fetch(base + "/auth/v1/token?grant_type=refresh_token", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ refresh_token: "invalid-probe-token" })
+    });
+    const t = await r.text();
+    console.log("WMA_AUTH_ENDPOINT_PROBE", JSON.stringify({
+      endpoint: "refresh",
+      status: r.status,
+      contentType: r.headers.get("content-type"),
+      preview: t.slice(0, 120).replace(/\s+/g, " ")
+    }));
+  } catch (e) {
+    console.log("WMA_AUTH_ENDPOINT_PROBE", JSON.stringify({
+      endpoint: "refresh",
+      error: e.message
+    }));
+  }
+
+  try {
+    const r = await fetch(base + "/auth/v1/otp?redirect_to=https%3A%2F%2Ftdi-rosa.github.io%2Fauto_booster%2F", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        email: "nobody-wikimaster-auto-test@example.invalid",
+        create_user: false
+      })
+    });
+    const t = await r.text();
+    console.log("WMA_AUTH_ENDPOINT_PROBE", JSON.stringify({
+      endpoint: "otp",
+      status: r.status,
+      contentType: r.headers.get("content-type"),
+      preview: t.slice(0, 160).replace(/\s+/g, " ")
+    }));
+  } catch (e) {
+    console.log("WMA_AUTH_ENDPOINT_PROBE", JSON.stringify({
+      endpoint: "otp",
+      error: e.message
+    }));
+  }
+}
+
 async function logAuthCapabilities() {
   try {
     const response = await fetch("https://cyrxjeppjqsxxjayfrur.supabase.co/auth/v1/settings", {
@@ -192,6 +245,7 @@ async function logAuthCapabilities() {
 server.listen(port, "0.0.0.0", () => {
   console.log(`WikiMaster Auto backend listening on :${port}`);
   setTimeout(logAuthCapabilities, 1500);
+  setTimeout(probeAuthEndpoints, 1800);
   setTimeout(scanWikiMastersTurnstile, 2500);
   setTimeout(testPasswordWithoutCaptcha, 3500);
   setTimeout(runSchedulerTick, 15_000);
