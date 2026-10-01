@@ -3,13 +3,17 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "engines": { "node": "22.x" },
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check api/wma.js && node --check lib/config.js && node --check lib/security.js && node --check lib/storage.js && node --check lib/wiki.js"
+    "check": "node --check server.js && node --check api/wma.js && node --check lib/config.js && node --check lib/security.js && node --check lib/storage.js && node --check lib/wiki.js && node --check lib/browser-login.js",
+    "postinstall": "npx playwright install --with-deps chromium"
   },
   "dependencies": {
     "redis": "^5.8.2",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "playwright": "^1.55.0"
   }
 }
