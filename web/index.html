@@ -19,83 +19,86 @@
 
   <main class="app-shell">
     <header class="hero">
-      <div class="logo-wrap">
-        <img src="./logo.svg" class="logo" alt="" />
-      </div>
+      <div class="logo-wrap"><img src="./logo.svg" class="logo" alt="" /></div>
       <div>
         <div class="eyebrow">PWA • Android + iPhone</div>
         <h1>WikiMaster Auto</h1>
-        <p>Une seule app. Une seule mise à jour. Tous tes appareils.</p>
+        <p>Tes boosters, ton historique et tes notifications sur tous tes appareils.</p>
       </div>
     </header>
 
     <section class="card status-card">
       <div class="card-head">
-        <div>
-          <span class="section-kicker">État</span>
-          <h2>Connexion</h2>
-        </div>
+        <div><span class="section-kicker">Compte</span><h2>WikiMasters</h2></div>
         <span id="onlineBadge" class="badge neutral">Vérification…</span>
       </div>
 
       <div class="status-row">
-        <div class="status-dot pending"></div>
+        <div id="accountDot" class="status-dot pending"></div>
         <div class="status-copy">
-          <strong id="accountStatus">Connexion WikiMasters à brancher</strong>
-          <span>La PWA est installable. L’authentification commune est la prochaine étape.</span>
+          <strong id="accountStatus">Chargement…</strong>
+          <span id="accountDetail">Vérification du backend.</span>
         </div>
       </div>
 
-      <button id="openWikiMasters" class="button secondary">
-        Ouvrir WikiMasters
-      </button>
+      <div id="connectActions" class="button-stack">
+        <button id="connectButton" class="button primary">Connecter mon compte</button>
+        <button id="disconnectButton" class="button danger" hidden>Déconnecter WikiMasters</button>
+      </div>
+
+      <div id="pairPanel" class="pair-panel" hidden>
+        <div class="pair-code-wrap">
+          <span>Code temporaire</span>
+          <strong id="pairCode">—</strong>
+        </div>
+        <ol class="pair-steps">
+          <li>Connecte-toi normalement sur WikiMasters.</li>
+          <li>Ajoute un favori Safari/Chrome appelé <b>Connecter WikiMaster Auto</b>.</li>
+          <li>Remplace l’adresse du favori par le code copié ci-dessous.</li>
+          <li>Sur <b>wiki-masters.com</b>, lance ce favori une fois.</li>
+        </ol>
+        <button id="copyBookmarklet" class="button secondary">Copier le favori de connexion</button>
+        <button id="openWikiMasters" class="button secondary">Ouvrir WikiMasters</button>
+        <p class="tiny">Le favori envoie uniquement le refresh token de ta session avec ce code temporaire. Ton mot de passe reste chez WikiMasters.</p>
+      </div>
     </section>
 
     <section class="card">
       <div class="card-head">
-        <div>
-          <span class="section-kicker">Automatisation</span>
-          <h2>Ouverture des boosters</h2>
-        </div>
-        <label class="switch disabled" aria-label="Automatisation bientôt disponible">
+        <div><span class="section-kicker">Automatisation</span><h2>Ouverture des boosters</h2></div>
+        <label id="automationSwitch" class="switch disabled" aria-label="Automatisation">
           <input id="automationToggle" type="checkbox" disabled />
           <span></span>
         </label>
       </div>
 
-      <p class="muted">
-        L’automatisation sera exécutée côté serveur pour fonctionner même si l’iPhone ou l’Android est fermé.
-      </p>
+      <p class="muted">Le backend ouvre les boosters même quand la PWA est fermée. L’exécution réelle peut varier de quelques minutes selon le scheduler.</p>
 
       <label class="field">
         <span>Intervalle souhaité</span>
         <select id="intervalSelect">
-          <option value="15">15 min</option>
-          <option value="30">30 min</option>
-          <option value="60">1 h</option>
-          <option value="90">1 h 30</option>
-          <option value="100">1 h 40</option>
-          <option value="120">2 h</option>
+          <option value="15">15 min</option><option value="30">30 min</option>
+          <option value="60">1 h</option><option value="90">1 h 30</option>
+          <option value="100">1 h 40</option><option value="120">2 h</option>
           <option value="180">3 h</option>
         </select>
       </label>
 
-      <div class="next-run placeholder">
+      <div class="next-run">
         <span>Prochaine ouverture</span>
-        <strong>Activée dès connexion du backend</strong>
+        <strong id="nextRunText">Automatisation désactivée</strong>
       </div>
+
+      <button id="openNowButton" class="button primary full-width" disabled>Ouvrir tous les boosters maintenant</button>
+      <p id="lastRunText" class="tiny">Aucune ouverture serveur enregistrée.</p>
     </section>
 
     <section class="card">
       <div class="card-head">
-        <div>
-          <span class="section-kicker">Notifications</span>
-          <h2>Seuil de rareté</h2>
-        </div>
+        <div><span class="section-kicker">Notifications</span><h2>Alertes de rareté</h2></div>
+        <button id="pushButton" class="mini-action">Activer</button>
       </div>
-
       <p id="rarityHint" class="muted">Notification à partir de UR</p>
-
       <div id="rarityPicker" class="rarity-picker" role="radiogroup" aria-label="Rareté minimale">
         <button type="button" data-rank="0" data-code="C">C</button>
         <button type="button" data-rank="1" data-code="PC">PC</button>
@@ -104,8 +107,7 @@
         <button type="button" data-rank="4" data-code="UR">UR</button>
         <button type="button" data-rank="5" data-code="L">L</button>
       </div>
-
-      <p class="tiny">Le seuil n’affecte jamais l’historique : toutes les cartes seront conservées.</p>
+      <p class="tiny">Toutes les cartes restent dans l’historique. Ce réglage contrôle seulement les notifications.</p>
     </section>
 
     <section class="card">
@@ -115,47 +117,39 @@
           <h2>Historique des cartes</h2>
           <span id="historyCount" class="muted small">0 carte</span>
         </div>
-        <select id="historySort" class="compact-select" aria-label="Trier l’historique">
-          <option value="recent">Récentes</option>
-          <option value="old">Anciennes</option>
-          <option value="rarity-desc">Rareté ↓</option>
-          <option value="rarity-asc">Rareté ↑</option>
-          <option value="name">Nom A → Z</option>
-        </select>
+        <div class="history-tools">
+          <select id="historySort" class="compact-select" aria-label="Trier l’historique">
+            <option value="recent">Récentes</option><option value="old">Anciennes</option>
+            <option value="rarity-desc">Rareté ↓</option><option value="rarity-asc">Rareté ↑</option>
+            <option value="name">Nom A → Z</option>
+          </select>
+          <button id="refreshHistory" class="mini-action">Actualiser</button>
+        </div>
       </div>
 
       <div id="historyEmpty" class="empty-state">
         <div class="empty-icon">✦</div>
         <strong>Aucune carte synchronisée</strong>
-        <span>L’historique apparaîtra ici dès que la connexion WikiMasters sera branchée.</span>
+        <span>Les cartes ouvertes par le backend apparaîtront ici.</span>
       </div>
       <div id="historyList" class="history-list"></div>
     </section>
 
     <section class="card install-card">
-      <div>
-        <span class="section-kicker">Installation</span>
-        <h2 id="installTitle">Installer l’app</h2>
-        <p id="installHelp" class="muted">Ajoute WikiMaster Auto à ton écran d’accueil.</p>
-      </div>
+      <div><span class="section-kicker">Installation</span><h2 id="installTitle">Installer l’app</h2><p id="installHelp" class="muted">Ajoute WikiMaster Auto à ton écran d’accueil.</p></div>
       <button id="installButton" class="button primary">Installer</button>
     </section>
 
-    <footer>
-      <span id="versionLabel">WikiMaster Auto PWA</span>
-      <span>•</span>
-      <span id="platformLabel"></span>
-    </footer>
+    <footer><span id="versionLabel">WikiMaster Auto PWA</span><span>•</span><span id="platformLabel"></span></footer>
   </main>
 
+  <aside id="toast" class="toast" hidden></aside>
   <aside id="updateBanner" class="update-banner" hidden>
-    <div>
-      <strong>Nouvelle version disponible</strong>
-      <span>La mise à jour est prête.</span>
-    </div>
+    <div><strong>Nouvelle version disponible</strong><span>La mise à jour est prête.</span></div>
     <button id="updateButton" class="button primary small-button">Mettre à jour</button>
   </aside>
 
+  <script src="./runtime-config.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
