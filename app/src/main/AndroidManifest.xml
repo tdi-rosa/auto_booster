@@ -8,6 +8,11 @@
         android:label="WikiMaster Auto"
         android:supportsRtl="true"
         android:theme="@style/Theme.WikiMasterAuto">
+
+        <activity
+            android:name=".LoginActivity"
+            android:exported="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
