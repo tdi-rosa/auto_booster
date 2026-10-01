@@ -93,19 +93,23 @@ function configurePush() {
 async function sendPullNotification(client, cards) {
   if (!client.pushSubscription || !configurePush()) return;
   const minRank = Number(client.settings?.minRank ?? 4);
-  const notable = cards.filter(
+
+  const sortedCards = [...cards].sort((a, b) =>
+    (RARITY_RANK[b.rarity] ?? 0) - (RARITY_RANK[a.rarity] ?? 0)
+  );
+  const notable = sortedCards.filter(
     (card) => (RARITY_RANK[card.rarity] ?? 0) >= minRank
   );
   if (!notable.length) return;
 
-  const title = notable.length === 1
-    ? `Nouvelle carte ${notable[0].rarity}`
-    : `${notable.length} cartes remarquables obtenues`;
+  const rarest = sortedCards[0]?.rarity || notable[0]?.rarity || "C";
+  const title = sortedCards.length === 1
+    ? `Nouvelle carte ${rarest}`
+    : `${sortedCards.length} nouvelles cartes · meilleure : ${rarest}`;
 
-  const body = notable
-    .slice(0, 3)
-    .map((card) => `${card.rarity} · ${card.title}`)
-    .join(" • ");
+  const body = sortedCards
+    .map((card) => `${card.rarity || "C"} · ${card.title || "Carte"}`)
+    .join("\n");
 
   try {
     await webpush.sendNotification(
