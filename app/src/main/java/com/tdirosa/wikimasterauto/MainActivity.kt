@@ -21,9 +21,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import androidx.work.WorkManager
+import androidx.lifecycle.lifecycleScope
 import coil.load
 import java.text.DateFormat
 import java.util.Date
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.ceil
 
 class MainActivity : AppCompatActivity() {
@@ -48,6 +52,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var historyContainer: LinearLayout
 
     private val intervalValues = listOf(15L, 30L, 60L, 90L, 100L, 120L, 180L)
+    private var imageBackfillRunning = false
+    private val failedImageFallbacks = mutableSetOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -338,6 +344,7 @@ class MainActivity : AppCompatActivity() {
     private fun renderHistory() {
         val prefs = getSharedPreferences("wikimaster_auto", MODE_PRIVATE)
         val pulls = RareHistoryStore.read(this)
+        backfillMissingImages(pulls)
         val sorted = when (prefs.getInt("history_sort", 0)) {
             1 -> pulls.sortedBy { it.pulledAtEpochMs }
             2 -> pulls.sortedWith(
@@ -386,6 +393,11 @@ class MainActivity : AppCompatActivity() {
                     crossfade(true)
                     placeholder(R.drawable.app_icon)
                     error(R.drawable.app_icon)
+                    listener(
+                        onError = { _, _ ->
+                            fallbackImageFromWikipedia(pull.title)
+                        }
+                    )
                 }
             }
 
@@ -399,6 +411,54 @@ class MainActivity : AppCompatActivity() {
             }
 
             historyContainer.addView(item)
+        }
+    }
+
+
+    private fun backfillMissingImages(pulls: List<RarePull>) {
+        if (imageBackfillRunning) return
+
+        val titles = pulls
+            .filter { it.imageUrl.isNullOrBlank() && !it.imageLookupDone }
+            .map { it.title }
+            .filter { it.isNotBlank() }
+            .distinct()
+
+        if (titles.isEmpty()) return
+
+        imageBackfillRunning = true
+        lifecycleScope.launch {
+            val resolved = withContext(Dispatchers.IO) {
+                WikipediaImageResolver.resolve(titles)
+            }
+
+            RareHistoryStore.applyWikipediaImageResults(
+                this@MainActivity,
+                titles.toSet(),
+                resolved
+            )
+            imageBackfillRunning = false
+            renderHistory()
+        }
+    }
+
+    private fun fallbackImageFromWikipedia(title: String) {
+        if (title.isBlank() || !failedImageFallbacks.add(title)) return
+
+        lifecycleScope.launch {
+            val resolved = withContext(Dispatchers.IO) {
+                WikipediaImageResolver.resolve(listOf(title))
+            }
+
+            RareHistoryStore.applyWikipediaImageResults(
+                this@MainActivity,
+                setOf(title),
+                resolved
+            )
+
+            if (resolved.containsKey(title)) {
+                renderHistory()
+            }
         }
     }
 
