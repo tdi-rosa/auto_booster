@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.1-pwa";
+const APP_VERSION = "0.5.2-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
@@ -474,12 +474,25 @@ function renderHistory() {
 
     body.append(top, title);
 
-    const link = document.createElement("a");
-    link.className = "history-link";
-    link.href = "https://www.wiki-masters.com/collection";
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.textContent = "Voir dans WikiMasters";
+    const link = document.createElement("button");
+    link.type = "button";
+    link.className = "history-link history-link-button";
+    link.textContent = "Retrouver dans WikiMasters";
+    link.addEventListener("click", async () => {
+      const cardName = String(card.title || "Carte");
+      try {
+        await navigator.clipboard.writeText(cardName);
+      } catch {
+        const area = document.createElement("textarea");
+        area.value = cardName;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+      toast(`« ${cardName} » copié — colle-le dans la recherche WikiMasters.`);
+      window.open("https://www.wiki-masters.com/collection", "_blank", "noopener,noreferrer");
+    });
     body.appendChild(link);
 
     article.append(imageWrap, body);
