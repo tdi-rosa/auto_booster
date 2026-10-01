@@ -855,3 +855,85 @@ body {
   border:1px solid #dce9e2;
   background:#f0f6f3;
 }
+
+body.modal-open { overflow:hidden; }
+
+.new-cards-modal {
+  position:fixed;
+  inset:0;
+  z-index:50;
+  display:grid;
+  place-items:center;
+  padding:18px;
+}
+.new-cards-modal[hidden] { display:none; }
+.new-cards-backdrop {
+  position:absolute;
+  inset:0;
+  background:rgba(15,25,20,.72);
+  backdrop-filter:blur(5px);
+}
+.new-cards-sheet {
+  position:relative;
+  z-index:1;
+  width:min(100%, 430px);
+  max-height:calc(100dvh - 36px);
+  overflow:auto;
+  background:#f7f8f6;
+  border:1px solid rgba(255,255,255,.5);
+  border-radius:22px;
+  padding:18px;
+  box-shadow:0 24px 80px rgba(0,0,0,.28);
+}
+.new-cards-header {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+}
+.new-cards-header h2 { margin:3px 0 0; font-size:22px; }
+.new-cards-progress {
+  padding:6px 9px;
+  border-radius:999px;
+  background:#e8eeea;
+  color:#536159;
+  font-size:11px;
+  font-weight:850;
+}
+.new-card-stage { min-height:390px; display:grid; align-items:center; }
+.new-card-reveal {
+  --rarity:#6f7d75;
+  --rarity-soft:#f2f4f3;
+  overflow:hidden;
+  background:#fff;
+  border:1px solid var(--line);
+  border-top:5px solid var(--rarity);
+  border-radius:18px;
+  box-shadow:0 12px 32px rgba(22,34,28,.10);
+  animation:new-card-in .26s ease-out;
+}
+.new-card-image-wrap { aspect-ratio:4/3; }
+.new-card-image { object-fit:cover; }
+.new-card-info {
+  display:grid;
+  justify-items:center;
+  gap:8px;
+  padding:17px 14px 19px;
+  text-align:center;
+}
+.new-card-info strong {
+  font-size:21px;
+  line-height:1.2;
+  letter-spacing:-.02em;
+}
+.new-card-stats { color:var(--muted); font-size:12px; font-weight:750; }
+@keyframes new-card-in {
+  from { opacity:0; transform:translateY(10px) scale(.985); }
+  to { opacity:1; transform:none; }
+}
+@media (max-width:420px) {
+  .new-cards-modal { padding:10px; }
+  .new-cards-sheet { max-height:calc(100dvh - 20px); padding:14px; border-radius:18px; }
+  .new-card-stage { min-height:350px; }
+}
