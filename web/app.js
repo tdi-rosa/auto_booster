@@ -1,4 +1,4 @@
-const APP_VERSION = "0.2.0-pwa";
+const APP_VERSION = "0.2.1-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
@@ -283,9 +283,11 @@ async function beginPairing() {
     $("#pairCode").textContent = result.pairCode;
     $("#pairPanel").hidden = false;
     $("#connectButton").hidden = true;
-    $("#accountStatus").textContent = "Appairage en attente";
+    $("#accountStatus").textContent = "Connexion en cours";
     $("#accountDetail").textContent =
-      "Le code reste valable 10 minutes. Connecte-toi sur WikiMasters puis lance le favori.";
+      "Suis les 3 petites étapes ci-dessous. Le code reste valable 10 minutes.";
+    showPairStep(1);
+    updateBookmarkGuide();
     startPairPolling();
   } catch (error) {
     toast(error.message === "Backend non configuré"
@@ -316,16 +318,44 @@ if(!r.ok)throw new Error("Appairage refusé ("+r.status+")");alert("WikiMaster A
   return "javascript:" + source.replace(/\n/g, "");
 }
 
+function showPairStep(step) {
+  [1, 2, 3].forEach((number) => {
+    const section = $("#pairStep" + number);
+    const dot = $("#wizardDot" + number);
+    if (section) section.hidden = number !== step;
+    if (dot) {
+      dot.classList.toggle("active", number === step);
+      dot.classList.toggle("done", number < step);
+    }
+  });
+}
+
+function updateBookmarkGuide() {
+  const ios = $("#iosBookmarkGuide");
+  const android = $("#androidBookmarkGuide");
+  const help = $("#bookmarkHelp");
+
+  if (ios) ios.hidden = !isIOS;
+  if (android) android.hidden = !isAndroid;
+
+  if (help) {
+    help.textContent = isIOS
+      ? "Une seule petite manipulation dans Safari, à faire une fois."
+      : isAndroid
+        ? "Une seule petite manipulation dans Chrome, à faire une fois."
+        : "Ajoute un favori WikiMaster Auto dans ton navigateur, puis remplace son adresse par celle copiée.";
+  }
+}
+
 async function copyBookmarklet() {
   const bookmarklet = makeBookmarklet();
   if (!bookmarklet) {
-    toast("Crée d’abord un code d’appairage.");
+    toast("Relance la connexion pour générer un nouveau code.");
     return;
   }
 
   try {
     await navigator.clipboard.writeText(bookmarklet);
-    toast("Code du favori copié.");
   } catch {
     const area = document.createElement("textarea");
     area.value = bookmarklet;
@@ -333,8 +363,15 @@ async function copyBookmarklet() {
     area.select();
     document.execCommand("copy");
     area.remove();
-    toast("Code du favori copié.");
   }
+
+  const button = $("#copyBookmarklet");
+  if (button) {
+    const oldText = button.textContent;
+    button.textContent = "Adresse copiée ✓";
+    setTimeout(() => { button.textContent = oldText; }, 1800);
+  }
+  toast("Adresse copiée. Plus qu’à la coller dans le favori.");
 }
 
 function startPairPolling() {
@@ -636,9 +673,16 @@ function setupSettings() {
 function setupActions() {
   $("#connectButton").addEventListener("click", beginPairing);
   $("#copyBookmarklet").addEventListener("click", copyBookmarklet);
-  $("#openWikiMasters").addEventListener("click", () => {
+
+  const openWiki = () => {
     window.open("https://www.wiki-masters.com/login", "_blank", "noopener,noreferrer");
-  });
+  };
+
+  $("#openWikiMasters").addEventListener("click", openWiki);
+  $("#openWikiMastersFinal").addEventListener("click", openWiki);
+  $("#pairNext1").addEventListener("click", () => showPairStep(2));
+  $("#pairNext2").addEventListener("click", () => showPairStep(3));
+  $("#pairBack").addEventListener("click", () => showPairStep(2));
   $("#disconnectButton").addEventListener("click", disconnectAccount);
   $("#openNowButton").addEventListener("click", openNow);
   $("#pushButton").addEventListener("click", enablePush);
