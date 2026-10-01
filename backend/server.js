@@ -52,6 +52,34 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (url.pathname === "/pair.js") {
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Cache-Control", "no-store");
+      res.end(`
+(async()=>{try{
+const B="https://wikimaster-auto-api-production.up.railway.app";
+const C=(prompt("Code affiché dans WikiMaster Auto :")||"").trim().toUpperCase();
+if(!C)throw new Error("Code manquant");
+const K="sb-cyrxjeppjqsxxjayfrur-auth-token",cs={};
+document.cookie.split(";").forEach(p=>{const i=p.indexOf("=");if(i>0)cs[p.slice(0,i).trim()]=decodeURIComponent(p.slice(i+1).trim())});
+let ks=Object.keys(cs).filter(k=>k===K||k.startsWith(K+"."));
+ks.sort((a,b)=>{const na=Number(a.split(".").pop()),nb=Number(b.split(".").pop());return(Number.isFinite(na)?na:0)-(Number.isFinite(nb)?nb:0)});
+if(!ks.length)throw new Error("Session WikiMasters introuvable. Vérifie que tu es connecté.");
+let raw=ks.map(k=>cs[k]).join("");
+if(raw.startsWith("base64-")){raw=raw.slice(7).replace(/-/g,"+").replace(/_/g,"/");raw+="=".repeat((4-raw.length%4)%4);raw=atob(raw)}
+let s=JSON.parse(raw);if(Array.isArray(s))s=s[0];
+if(!s?.refresh_token)throw new Error("Refresh token introuvable");
+const r=await fetch(B+"/api/wma?action=pair-complete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pairCode:C,refreshToken:s.refresh_token})});
+const j=await r.json().catch(()=>({}));
+if(!r.ok)throw new Error(j.error||("HTTP "+r.status));
+alert("WikiMaster Auto connecté ✓ Tu peux revenir sur ton téléphone.");
+}catch(e){alert("WikiMaster Auto : "+e.message)}})();
+`);
+      return;
+    }
+
     if (url.pathname !== "/api/wma") {
       res.statusCode = 404;
       res.end("Not found");
