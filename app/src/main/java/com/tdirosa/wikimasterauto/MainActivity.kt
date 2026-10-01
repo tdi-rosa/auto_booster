@@ -3,6 +3,7 @@ package com.tdirosa.wikimasterauto
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
+import android.widget.Button
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -25,6 +26,7 @@ class MainActivity : AppCompatActivity() {
 
         val prefs = getSharedPreferences("wikimaster_auto", MODE_PRIVATE)
         val automationSwitch = findViewById<SwitchCompat>(R.id.automationSwitch)
+        val openNowButton = findViewById<Button>(R.id.openNowButton)
         val statusText = findViewById<TextView>(R.id.statusText)
 
         val enabled = prefs.getBoolean("enabled", false)
@@ -38,6 +40,11 @@ class MainActivity : AppCompatActivity() {
             if (isChecked) AutomationScheduler.enable(this)
             else AutomationScheduler.disable(this)
             renderStatus(isChecked, statusText)
+        }
+
+        openNowButton.setOnClickListener {
+            AutomationScheduler.runNow(this)
+            statusText.text = "Manual opening requested…"
         }
     }
 
