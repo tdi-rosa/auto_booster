@@ -23,11 +23,14 @@ class BoosterWorker(
 
             if (manualRun || count >= 10) {
                 val cards = client.openAllAvailableBoosters()
-                val interesting = cards.filter { it.rarity.ordinal >= Rarity.SUPER_RARE.ordinal }
-                if (interesting.isNotEmpty()) {
-                    NotificationHelper.notifyRarePulls(applicationContext, interesting)
+                val rareCards = cards.filter { it.rarity.isAboveSuperRare() }
+
+                if (rareCards.isNotEmpty()) {
+                    RareHistoryStore.addAll(applicationContext, rareCards)
+                    NotificationHelper.notifyRarePulls(applicationContext, rareCards)
                 }
             }
+
             Result.success()
         } catch (e: WikiMastersNotConfiguredException) {
             NotificationHelper.notifyNeedsSetup(applicationContext)
