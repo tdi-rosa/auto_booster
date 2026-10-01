@@ -1,4 +1,4 @@
-const CACHE_NAME = "wikimaster-auto-pwa-v7";
+const CACHE_NAME = "wikimaster-auto-pwa-v8";
 const APP_SHELL = [
   "./",
   "./index.html",
