@@ -1,10 +1,10 @@
-const CACHE_NAME = "wikimaster-auto-pwa-v5";
+const CACHE_NAME = "wikimaster-auto-pwa-v6";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css",
-  "./app.js",
-  "./runtime-config.js",
+  "./styles.css?v=direct-login-1",
+  "./app.js?v=direct-login-1",
+  "./runtime-config.js?v=direct-login-1",
   "./manifest.webmanifest",
   "./logo.svg"
 ];
