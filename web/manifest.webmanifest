@@ -10,7 +10,7 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "./app-icon-v2.svg",
+      "src": "./app-icon-v3.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
