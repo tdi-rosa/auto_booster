@@ -282,8 +282,6 @@ async function beginPairing() {
     activePairCode = result.pairCode;
 
     $("#pairCode").textContent = result.pairCode;
-    $("#pcPairCommand").value =
-      "fetch('https://wikimaster-auto-api-production.up.railway.app/pair.js').then(r=>r.text()).then(eval)";
     $("#pairPanel").hidden = false;
     $("#connectButton").hidden = true;
     $("#accountStatus").textContent = "Appairage en attente";
@@ -294,17 +292,6 @@ async function beginPairing() {
     console.error(error);
     toast("Impossible de préparer l’appairage.");
   }
-}
-
-async function copyPcCommand() {
-  const value = $("#pcPairCommand").value;
-  try {
-    await navigator.clipboard.writeText(value);
-  } catch {
-    $("#pcPairCommand").select();
-    document.execCommand("copy");
-  }
-  toast("Commande PC copiée.");
 }
 
 function startPairPolling() {
@@ -612,7 +599,6 @@ function setupSettings() {
 
 function setupActions() {
   $("#connectButton").addEventListener("click", beginPairing);
-  $("#copyPcCommand").addEventListener("click", copyPcCommand);
   $("#cancelLoginButton").addEventListener("click", cancelLogin);
 
   $("#disconnectButton").addEventListener("click", disconnectAccount);
