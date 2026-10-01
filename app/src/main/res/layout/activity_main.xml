@@ -46,12 +46,18 @@
 
             <TextView
                 android:id="@+id/sessionText"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="Not connected"
-                android:textColor="#6B7280"
-                android:textSize="14sp" />
+                android:layout_marginTop="10dp"
+                android:background="@drawable/status_disconnected_background"
+                android:paddingStart="12dp"
+                android:paddingTop="7dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="7dp"
+                android:text="●  Non connecté"
+                android:textColor="#991B1B"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <androidx.appcompat.widget.SwitchCompat
                 android:id="@+id/automationSwitch"
