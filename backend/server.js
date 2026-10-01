@@ -88,6 +88,42 @@ async function runSchedulerTick() {
   }
 }
 
+async function scanWikiMastersTurnstile() {
+  try {
+    const response = await fetch("https://www.wiki-masters.com/login", {
+      headers: { "User-Agent": "Mozilla/5.0" }
+    });
+    const html = await response.text();
+    const scriptPaths = [...html.matchAll(/<script[^>]+src=["']([^"']+\.js[^"']*)["']/gi)]
+      .map((match) => match[1])
+      .slice(0, 40);
+
+    const found = new Set();
+    const inspect = (text) => {
+      for (const match of text.matchAll(/0x[0-9A-Za-z_-]{20,}/g)) found.add(match[0]);
+      for (const match of text.matchAll(/sitekey["'\s:=]+["']([^"']{10,120})["']/gi)) found.add(match[1]);
+    };
+    inspect(html);
+
+    for (const src of scriptPaths) {
+      try {
+        const url = new URL(src, "https://www.wiki-masters.com").toString();
+        const jsResponse = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+        const js = await jsResponse.text();
+        if (/turnstile|captcha|sitekey/i.test(js)) inspect(js);
+      } catch {}
+    }
+
+    console.log("WMA_TURNSTILE_SCAN", JSON.stringify({
+      status: response.status,
+      scriptCount: scriptPaths.length,
+      sitekeys: [...found]
+    }));
+  } catch (error) {
+    console.error("WMA_TURNSTILE_SCAN_ERROR", error.message);
+  }
+}
+
 async function logAuthCapabilities() {
   try {
     const response = await fetch("https://cyrxjeppjqsxxjayfrur.supabase.co/auth/v1/settings", {
@@ -124,6 +160,7 @@ async function logAuthCapabilities() {
 server.listen(port, "0.0.0.0", () => {
   console.log(`WikiMaster Auto backend listening on :${port}`);
   setTimeout(logAuthCapabilities, 1500);
+  setTimeout(scanWikiMastersTurnstile, 2500);
   setTimeout(runSchedulerTick, 15_000);
   setInterval(runSchedulerTick, 5 * 60_000);
 });
