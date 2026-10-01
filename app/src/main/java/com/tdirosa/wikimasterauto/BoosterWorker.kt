@@ -11,13 +11,17 @@ class BoosterWorker(
 
     override suspend fun doWork(): Result {
         val prefs = applicationContext.getSharedPreferences("wikimaster_auto", Context.MODE_PRIVATE)
-        if (!prefs.getBoolean("enabled", false)) return Result.success()
+        val manualRun = inputData.getBoolean("manual_run", false)
+
+        if (!manualRun && !prefs.getBoolean("enabled", false)) {
+            return Result.success()
+        }
 
         return try {
             val client = WikiMastersClient(applicationContext)
             val count = client.getBoosterCount()
 
-            if (count >= 10) {
+            if (manualRun || count >= 10) {
                 val cards = client.openAllAvailableBoosters()
                 val interesting = cards.filter { it.rarity.ordinal >= Rarity.SUPER_RARE.ordinal }
                 if (interesting.isNotEmpty()) {
