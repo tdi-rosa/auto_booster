@@ -91,7 +91,10 @@ async function runSchedulerTick() {
 async function logAuthCapabilities() {
   try {
     const response = await fetch("https://cyrxjeppjqsxxjayfrur.supabase.co/auth/v1/settings", {
-      headers: { apikey: process.env.SUPABASE_ANON_KEY || "" }
+      headers: {
+        apikey: process.env.SUPABASE_ANON_KEY || "",
+        Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY || ""}`
+      }
     });
     const text = await response.text();
     let data = null;
