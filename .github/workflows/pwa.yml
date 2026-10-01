@@ -45,7 +45,9 @@ jobs:
           rm -rf _site
           cp -R web _site
           printf '{"version":"%s"}\n' "$GITHUB_SHA" > _site/version.json
-          printf 'window.WMA_BACKEND_URL = %s;\n' "$(printf '%s' "$WMA_BACKEND_URL" | python -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" > _site/runtime-config.js
+          if [ -n "$WMA_BACKEND_URL" ]; then
+            printf 'window.WMA_BACKEND_URL = %s;\n' "$(printf '%s' "$WMA_BACKEND_URL" | python -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" > _site/runtime-config.js
+          fi
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
