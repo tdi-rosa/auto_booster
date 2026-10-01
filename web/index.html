@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest?v=icon-v3" />
   <link rel="icon" href="./app-icon-v3.svg?v=3" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="./app-icon-v3.svg?v=3" />
-  <link rel="stylesheet" href="./styles.css?v=design-052" />
+  <link rel="stylesheet" href="./styles.css?v=reveal-053" />
 </head>
 <body>
   <div class="aurora aurora-one"></div>
@@ -151,6 +151,21 @@
     <footer><span id="versionLabel">WikiMaster Auto PWA</span><span>•</span><span id="platformLabel"></span></footer>
   </main>
 
+  <div id="newCardsModal" class="new-cards-modal" hidden>
+    <div class="new-cards-backdrop"></div>
+    <section class="new-cards-sheet" role="dialog" aria-modal="true" aria-labelledby="newCardsTitle">
+      <div class="new-cards-header">
+        <div>
+          <span class="section-kicker">Dernières ouvertures</span>
+          <h2 id="newCardsTitle">Nouvelles cartes</h2>
+        </div>
+        <span id="newCardsProgress" class="new-cards-progress"></span>
+      </div>
+      <div id="newCardStage" class="new-card-stage"></div>
+      <button id="newCardNext" class="button primary full-width">Suivante</button>
+    </section>
+  </div>
+
   <aside id="toast" class="toast" hidden></aside>
   <aside id="updateBanner" class="update-banner" hidden>
     <div><strong>Nouvelle version disponible</strong><span>La mise à jour est prête.</span></div>
@@ -158,6 +173,6 @@
   </aside>
 
   <script src="./runtime-config.js?v=design-051"></script>
-  <script type="module" src="./app.js?v=design-052"></script>
+  <script type="module" src="./app.js?v=reveal-053"></script>
 </body>
 </html>
