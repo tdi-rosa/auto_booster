@@ -1,88 +1,189 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#F6F7F9"
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:padding="20dp">
 
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="WikiMaster Auto"
-            android:textSize="28sp"
+            android:textColor="#111827"
+            android:textSize="30sp"
             android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/statusText"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="Automation inactive"
-            android:textSize="18sp" />
-
-        <TextView
-            android:id="@+id/sessionText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="WikiMasters session: not connected"
+            android:layout_marginTop="4dp"
+            android:text="Open boosters automatically and keep the pulls that matter."
+            android:textColor="#6B7280"
             android:textSize="15sp" />
 
-        <Button
-            android:id="@+id/loginButton"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:text="Connect to WikiMasters" />
+            android:background="@drawable/card_background"
+            android:orientation="vertical"
+            android:padding="18dp">
 
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/automationSwitch"
+            <TextView
+                android:id="@+id/statusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Automation paused"
+                android:textColor="#111827"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/sessionText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Not connected"
+                android:textColor="#6B7280"
+                android:textSize="14sp" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/automationSwitch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Automatic opening every ~100 min"
+                android:textColor="#111827" />
+
+            <Button
+                android:id="@+id/loginButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Connect to WikiMasters"
+                android:textAllCaps="false" />
+
+            <Button
+                android:id="@+id/openNowButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Open all boosters now"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            android:text="Enable automatic opening every ~100 min" />
+            android:layout_marginTop="14dp"
+            android:background="@drawable/card_background"
+            android:orientation="vertical"
+            android:padding="18dp">
 
-        <Button
-            android:id="@+id/openNowButton"
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Notification rarity"
+                android:textColor="#111827"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/rarityValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:text="Notify from UR and above"
+                android:textColor="#6B7280"
+                android:textSize="14sp" />
+
+            <SeekBar
+                android:id="@+id/raritySeekBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="C       PC       R       SR       UR       L"
+                android:textColor="#9CA3AF"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="Open all boosters now" />
+            android:layout_marginTop="14dp"
+            android:background="@drawable/card_background"
+            android:orientation="vertical"
+            android:padding="18dp">
 
-        <TextView
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Last run"
+                android:textColor="#111827"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/runInfoText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="7dp"
+                android:text="No opening recorded yet"
+                android:textColor="#4B5563"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            android:text="Notifications and history are recorded only for rarities strictly above SR: UR and L."
-            android:textSize="15sp" />
+            android:layout_marginTop="14dp"
+            android:layout_marginBottom="24dp"
+            android:background="@drawable/card_background"
+            android:orientation="vertical"
+            android:padding="18dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:text="Rare pull history"
-            android:textSize="22sp"
-            android:textStyle="bold" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-        <Button
-            android:id="@+id/refreshHistoryButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Refresh history" />
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Pull history"
+                    android:textColor="#111827"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/historyText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:paddingBottom="32dp"
-            android:text="No UR/L pulls recorded yet."
-            android:textSize="16sp" />
+                <Button
+                    android:id="@+id/refreshHistoryButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Refresh"
+                    android:textAllCaps="false" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/historyText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="No notified pulls yet."
+                android:textColor="#374151"
+                android:textSize="15sp" />
+        </LinearLayout>
 
     </LinearLayout>
 </ScrollView>
