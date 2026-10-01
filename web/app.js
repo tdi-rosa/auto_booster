@@ -430,7 +430,8 @@ function renderHistory() {
 
   for (const card of items) {
     const article = document.createElement("article");
-    article.className = "history-card";
+    const rarityCode = String(card.rarity || "C").toLowerCase();
+    article.className = `history-card rarity-card-${rarityCode}`;
 
     const imageWrap = document.createElement("div");
     imageWrap.className = "history-image-wrap";
@@ -442,10 +443,10 @@ function renderHistory() {
     if (card.imageUrl) {
       img.src = card.imageUrl;
       img.addEventListener("error", () => {
-        recoverWikipediaImage(card.title, img);
+        recoverWikipediaImage(card.title, img, imageWrap);
       }, { once: true });
     } else {
-      recoverWikipediaImage(card.title, img);
+      recoverWikipediaImage(card.title, img, imageWrap);
     }
     imageWrap.appendChild(img);
 
@@ -473,24 +474,40 @@ function renderHistory() {
 
     body.append(top, title);
 
-    if (card.wikipediaUrl) {
-      const link = document.createElement("a");
-      link.className = "history-link";
-      link.href = card.wikipediaUrl;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.textContent = "Voir dans le navigateur";
-      body.appendChild(link);
-    }
+    const link = document.createElement("a");
+    link.className = "history-link";
+    link.href = "https://www.wiki-masters.com/collection";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "Voir dans WikiMasters";
+    body.appendChild(link);
 
     article.append(imageWrap, body);
     list.appendChild(article);
   }
 }
 
-async function recoverWikipediaImage(title, img) {
+function showCardPlaceholder(img, imageWrap) {
+  img.removeAttribute("src");
+  img.hidden = true;
+  if (imageWrap.querySelector(".card-placeholder")) return;
+
+  const placeholder = document.createElement("div");
+  placeholder.className = "card-placeholder";
+  placeholder.innerHTML = `
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <rect x="16" y="10" width="32" height="44" rx="6"></rect>
+      <path d="M24 23h16M24 31h12M24 39h9"></path>
+      <circle cx="39" cy="42" r="4"></circle>
+    </svg>
+    <span>Image indisponible</span>
+  `;
+  imageWrap.appendChild(placeholder);
+}
+
+async function recoverWikipediaImage(title, img, imageWrap) {
   if (!title) {
-    img.src = "./logo.svg";
+    showCardPlaceholder(img, imageWrap);
     return;
   }
 
@@ -509,9 +526,15 @@ async function recoverWikipediaImage(title, img) {
     const response = await fetch(url);
     const json = await response.json();
     const source = json?.query?.pages?.[0]?.thumbnail?.source;
-    img.src = source || "./logo.svg";
+    if (!source) {
+      showCardPlaceholder(img, imageWrap);
+      return;
+    }
+    img.hidden = false;
+    img.src = source;
+    img.addEventListener("error", () => showCardPlaceholder(img, imageWrap), { once: true });
   } catch {
-    img.src = "./logo.svg";
+    showCardPlaceholder(img, imageWrap);
   }
 }
 
