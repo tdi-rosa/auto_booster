@@ -12,6 +12,7 @@
   <link rel="icon" href="./logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="./logo.svg" />
   <link rel="stylesheet" href="./styles.css" />
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 </head>
 <body>
   <div class="aurora aurora-one"></div>
@@ -46,22 +47,28 @@
         <button id="disconnectButton" class="button danger" hidden>Déconnecter WikiMasters</button>
       </div>
 
-      <div id="pairPanel" class="pair-panel pair-wizard" hidden>
-        <div class="wizard-progress">
-          <span id="wizardDot1" class="wizard-dot active">1</span>
-          <span class="wizard-line"></span>
-          <span id="wizardDot2" class="wizard-dot">2</span>
-          <span class="wizard-line"></span>
-          <span id="wizardDot3" class="wizard-dot">3</span>
-        </div>
+      <div id="pairPanel" class="pair-panel" hidden>
+        <div class="pair-step-icon">🔐</div>
+        <h3>Connexion WikiMasters</h3>
+        <p class="muted">Connecte ton compte directement ici. Ton mot de passe sert uniquement à cette connexion et n’est pas enregistré.</p>
 
-        <section id="pairStep1" class="pair-step">
-          <div class="pair-step-icon">↗</div>
-          <h3>Connecte-toi à WikiMasters</h3>
-          <p>Ouvre WikiMasters et connecte-toi normalement avec ton compte.</p>
-          <button id="openWikiMasters" class="button primary">Ouvrir WikiMasters</button>
-          <button id="pairNext1" class="button ghost">Je suis connecté</button>
-        </section>
+        <label class="field">
+          <span>Email WikiMasters</span>
+          <input id="wikiEmail" type="email" autocomplete="username" placeholder="toi@exemple.com" />
+        </label>
+
+        <label class="field">
+          <span>Mot de passe</span>
+          <input id="wikiPassword" type="password" autocomplete="current-password" placeholder="••••••••" />
+        </label>
+
+        <div id="turnstileWidget" class="turnstile-wrap"></div>
+        <p id="captchaHelp" class="tiny">Valide le CAPTCHA puis touche “Se connecter”.</p>
+
+        <button id="loginWikiButton" class="button primary full-width">Se connecter</button>
+        <button id="cancelLoginButton" class="button ghost">Annuler</button>
+      </div>
+    </section>
 
         <section id="pairStep2" class="pair-step" hidden>
           <div class="pair-step-icon">★</div>
