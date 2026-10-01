@@ -552,3 +552,30 @@ footer {
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   user-select:all;
 }
+
+.field input {
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid #e5e7eb;
+  border-radius:14px;
+  padding:13px 14px;
+  font:inherit;
+  background:#fff;
+  color:inherit;
+  outline:none;
+}
+.field input:focus {
+  border-color:#7c3aed;
+  box-shadow:0 0 0 3px rgba(124,58,237,.12);
+}
+.turnstile-wrap {
+  min-height:68px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  overflow:hidden;
+}
+#pairPanel h3 {
+  margin:0;
+  text-align:center;
+}
