@@ -9,13 +9,13 @@ data class RarePull(
     val title: String,
     val rarity: String,
     val wikipediaUrl: String?,
+    val imageUrl: String?,
     val pulledAtEpochMs: Long
 )
 
 object RareHistoryStore {
     private const val PREFS = "wikimaster_auto"
     private const val KEY_HISTORY = "rare_history"
-    private const val MAX_ITEMS = 200
 
     fun addAll(context: Context, cards: List<WikiCard>) {
         if (cards.isEmpty()) return
@@ -31,21 +31,21 @@ object RareHistoryStore {
                     title = card.title,
                     rarity = card.rarity.code,
                     wikipediaUrl = card.wikipediaUrl,
+                    imageUrl = card.imageUrl,
                     pulledAtEpochMs = now
                 )
             )
         }
 
-        val trimmed = current.take(MAX_ITEMS)
         val json = JSONArray()
-
-        trimmed.forEach { pull ->
+        current.forEach { pull ->
             json.put(
                 JSONObject()
                     .put("card_id", pull.cardId)
                     .put("title", pull.title)
                     .put("rarity", pull.rarity)
                     .put("wikipedia_url", pull.wikipediaUrl)
+                    .put("image_url", pull.imageUrl)
                     .put("pulled_at", pull.pulledAtEpochMs)
             )
         }
@@ -70,7 +70,8 @@ object RareHistoryStore {
                             cardId = item.optString("card_id"),
                             title = item.optString("title"),
                             rarity = item.optString("rarity"),
-                            wikipediaUrl = if (item.isNull("wikipedia_url")) null else item.optString("wikipedia_url"),
+                            wikipediaUrl = item.optNullableString("wikipedia_url"),
+                            imageUrl = item.optNullableString("image_url"),
                             pulledAtEpochMs = item.optLong("pulled_at")
                         )
                     )
@@ -78,4 +79,7 @@ object RareHistoryStore {
             }
         }.getOrDefault(emptyList())
     }
+
+    private fun JSONObject.optNullableString(key: String): String? =
+        if (!has(key) || isNull(key)) null else optString(key).takeIf { it.isNotBlank() }
 }
