@@ -67,6 +67,29 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+async function runSchedulerTick() {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return;
+
+  try {
+    const response = await fetch(
+      `http://127.0.0.1:${port}/api/wma?action=cron`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${secret}` },
+        signal: AbortSignal.timeout(90_000)
+      }
+    );
+    if (!response.ok) {
+      console.error("Scheduler tick failed:", response.status, await response.text());
+    }
+  } catch (error) {
+    console.error("Scheduler tick error:", error.message);
+  }
+}
+
 server.listen(port, "0.0.0.0", () => {
   console.log(`WikiMaster Auto backend listening on :${port}`);
+  setTimeout(runSchedulerTick, 15_000);
+  setInterval(runSchedulerTick, 5 * 60_000);
 });
