@@ -1,4 +1,4 @@
-const APP_VERSION = "0.3.0-pwa";
+const APP_VERSION = "0.4.0-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
@@ -26,8 +26,8 @@ let currentStatus = null;
 let historyItems = [];
 let activePairCode = null;
 let pairingPoll = null;
-let captchaToken = "";
-let turnstileWidgetId = null;
+let browserLoginId = null;
+let browserLoginPoll = null;
 let toastTimer = null;
 
 function platformName() {
@@ -277,137 +277,161 @@ async function refreshStatus({ quiet = false } = {}) {
   }
 }
 
-async function waitForTurnstile(timeoutMs = 10000) {
-  const started = Date.now();
-  while (!window.turnstile) {
-    if (Date.now() - started > timeoutMs) {
-      throw new Error("CAPTCHA indisponible");
-    }
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  return window.turnstile;
-}
-
-async function renderTurnstile() {
-  captchaToken = "";
-  const container = $("#turnstileWidget");
-  if (!container) return;
-
-  const turnstile = await waitForTurnstile();
-
-  if (turnstileWidgetId !== null) {
-    try { turnstile.remove(turnstileWidgetId); } catch {}
-    turnstileWidgetId = null;
-  }
-
-  container.replaceChildren();
-  turnstileWidgetId = turnstile.render(container, {
-    sitekey: "0x4AAAAAAEW_2IAWonrk_N5i",
-    theme: "auto",
-    callback(token) {
-      captchaToken = token;
-      $("#captchaHelp").textContent = "CAPTCHA validé ✓";
-    },
-    "expired-callback"() {
-      captchaToken = "";
-      $("#captchaHelp").textContent = "Le CAPTCHA a expiré. Valide-le à nouveau.";
-    },
-    "error-callback"(code) {
-      captchaToken = "";
-      const suffix = code ? ` (erreur ${code})` : "";
-      $("#captchaHelp").textContent =
-        "CAPTCHA WikiMasters refusé sur ce domaine" + suffix + ".";
-      console.error("Turnstile error", code);
-    }
-  });
-}
-
 async function beginPairing() {
   try {
     const result = await api("pair-start", { method: "POST" }, false);
     localStorage.setItem(STORAGE.credential, result.credential);
-    activePairCode = result.pairCode || null;
+    activePairCode = result.pairCode || "remote";
 
     $("#pairPanel").hidden = false;
     $("#connectButton").hidden = true;
+    $("#remoteCredentials").hidden = false;
+    $("#remoteBrowserPanel").hidden = true;
     $("#accountStatus").textContent = "Connexion WikiMasters";
     $("#accountDetail").textContent =
-      "Entre tes identifiants WikiMasters puis valide le CAPTCHA.";
-
-    $("#wikiPassword").value = "";
-    $("#captchaHelp").textContent = "Valide le CAPTCHA puis touche “Se connecter”.";
-    await renderTurnstile();
+      "Une page WikiMasters temporaire va s’ouvrir dans l’app.";
   } catch (error) {
     console.error(error);
     toast("Impossible de préparer la connexion.");
   }
 }
 
-async function loginWikiMasters() {
+function stopBrowserPolling() {
+  if (browserLoginPoll) clearInterval(browserLoginPoll);
+  browserLoginPoll = null;
+}
+
+async function refreshRemoteBrowser() {
+  if (!browserLoginId) return;
+
+  try {
+    const result = await api("browser-screen", {
+      params: { browserId: browserLoginId }
+    });
+
+    if (result.connected && result.status) {
+      stopBrowserPolling();
+      browserLoginId = null;
+      activePairCode = null;
+      currentStatus = result.status;
+      renderStatus(result.status);
+      $("#pairPanel").hidden = true;
+      $("#wikiPassword").value = "";
+      toast("Compte WikiMasters connecté ✓");
+      await refreshHistory({ quiet: true });
+      return;
+    }
+
+    if (result.imageBase64) {
+      const image = $("#remoteBrowserImage");
+      image.src = `data:image/jpeg;base64,${result.imageBase64}`;
+      image.hidden = false;
+      $("#remoteBrowserLoading").hidden = true;
+    }
+  } catch (error) {
+    if (error.status === 404 || error.payload?.error === "browser_session_expired") {
+      stopBrowserPolling();
+      browserLoginId = null;
+      $("#remoteBrowserStatus").textContent =
+        "La session a expiré. Relance la connexion.";
+    }
+  }
+}
+
+async function startRemoteBrowserLogin() {
   const email = $("#wikiEmail").value.trim();
   const passwordInput = $("#wikiPassword");
   const password = passwordInput.value;
-  const button = $("#loginWikiButton");
+  const button = $("#startBrowserLoginButton");
 
   if (!email || !password) {
     toast("Entre ton email et ton mot de passe WikiMasters.");
     return;
   }
-  if (!captchaToken) {
-    toast("Valide d’abord le CAPTCHA.");
-    return;
-  }
 
   const oldText = button.textContent;
   button.disabled = true;
-  button.textContent = "Connexion…";
+  button.textContent = "Ouverture de WikiMasters…";
 
   try {
-    const status = await api("login", {
+    const started = await api("browser-start", { method: "POST" });
+    browserLoginId = started.id;
+
+    await api("browser-fill", {
       method: "POST",
-      body: { email, password, captchaToken }
+      body: {
+        browserId: browserLoginId,
+        email,
+        password
+      }
     });
 
     passwordInput.value = "";
-    captchaToken = "";
-    currentStatus = status;
-    renderStatus(status);
-    $("#pairPanel").hidden = true;
-    $("#connectButton").hidden = true;
-    toast("Compte WikiMasters connecté ✓");
-    await refreshHistory({ quiet: true });
+    $("#remoteCredentials").hidden = true;
+    $("#remoteBrowserPanel").hidden = false;
+    $("#remoteBrowserLoading").hidden = false;
+    $("#remoteBrowserImage").hidden = true;
+    $("#remoteBrowserStatus").textContent =
+      "Valide le CAPTCHA puis touche Connexion dans la page ci-dessus.";
+
+    await refreshRemoteBrowser();
+    stopBrowserPolling();
+    browserLoginPoll = setInterval(refreshRemoteBrowser, 1200);
   } catch (error) {
-    passwordInput.value = "";
-    captchaToken = "";
-    const message =
-      error.payload?.message ||
-      (error.payload?.error === "login_failed"
-        ? "Connexion refusée par WikiMasters."
-        : "Connexion impossible.");
-    $("#captchaHelp").textContent = message;
-    toast(message);
-    try {
-      if (window.turnstile && turnstileWidgetId !== null) {
-        window.turnstile.reset(turnstileWidgetId);
-      }
-    } catch {}
+    console.error(error);
+    toast("Impossible d’ouvrir la page WikiMasters distante.");
+    if (browserLoginId) {
+      try {
+        await api("browser-cancel", {
+          method: "POST",
+          body: { browserId: browserLoginId }
+        });
+      } catch {}
+    }
+    browserLoginId = null;
   } finally {
     button.disabled = false;
     button.textContent = oldText;
   }
 }
 
-function cancelLogin() {
+async function clickRemoteBrowser(event) {
+  if (!browserLoginId) return;
+  const image = $("#remoteBrowserImage");
+  const rect = image.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+
+  const x = ((event.clientX - rect.left) / rect.width) * 390;
+  const y = ((event.clientY - rect.top) / rect.height) * 844;
+
+  try {
+    await api("browser-click", {
+      method: "POST",
+      body: { browserId: browserLoginId, x, y }
+    });
+    await refreshRemoteBrowser();
+  } catch {
+    toast("Le clic n’a pas été transmis. Réessaie.");
+  }
+}
+
+async function cancelLogin() {
+  stopBrowserPolling();
+  if (browserLoginId) {
+    try {
+      await api("browser-cancel", {
+        method: "POST",
+        body: { browserId: browserLoginId }
+      });
+    } catch {}
+  }
+  browserLoginId = null;
+  activePairCode = null;
   $("#pairPanel").hidden = true;
   $("#connectButton").hidden = false;
+  $("#remoteCredentials").hidden = false;
+  $("#remoteBrowserPanel").hidden = true;
   $("#wikiPassword").value = "";
-  captchaToken = "";
-  try {
-    if (window.turnstile && turnstileWidgetId !== null) {
-      window.turnstile.remove(turnstileWidgetId);
-    }
-  } catch {}
-  turnstileWidgetId = null;
 }
 
 async function updateSettings(patch) {
@@ -698,10 +722,11 @@ function setupSettings() {
 
 function setupActions() {
   $("#connectButton").addEventListener("click", beginPairing);
-  $("#loginWikiButton").addEventListener("click", loginWikiMasters);
+  $("#startBrowserLoginButton").addEventListener("click", startRemoteBrowserLogin);
   $("#cancelLoginButton").addEventListener("click", cancelLogin);
+  $("#remoteBrowserImage").addEventListener("click", clickRemoteBrowser);
   $("#wikiPassword").addEventListener("keydown", (event) => {
-    if (event.key === "Enter") loginWikiMasters();
+    if (event.key === "Enter") startRemoteBrowserLogin();
   });
 
   $("#disconnectButton").addEventListener("click", disconnectAccount);
