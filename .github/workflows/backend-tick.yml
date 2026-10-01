@@ -1,0 +1,22 @@
+name: WikiMaster backend tick
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger due booster openings
+        env:
+          BACKEND_URL: ${{ secrets.WMA_BACKEND_URL }}
+          CRON_SECRET: ${{ secrets.WMA_CRON_SECRET }}
+        run: |
+          if [ -z "$BACKEND_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Backend scheduler is not configured yet; skipping."
+            exit 0
+          fi
+
+          curl --fail-with-body --silent --show-error             --retry 2             --max-time 90             -X POST "${BACKEND_URL%/}/api/wma?action=cron"             -H "Authorization: Bearer $CRON_SECRET"
