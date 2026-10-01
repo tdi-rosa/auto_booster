@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/wma.js": {
+      "maxDuration": 60
+    }
+  }
+}
