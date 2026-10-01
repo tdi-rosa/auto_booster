@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="./logo.svg" />
-  <link rel="stylesheet" href="./styles.css?v=remote-login-1" />
+  <link rel="stylesheet" href="./styles.css?v=pc-pair-1" />
 </head>
 <body>
   <div class="aurora aurora-one"></div>
@@ -47,33 +47,27 @@
       </div>
 
       <div id="pairPanel" class="pair-panel" hidden>
-        <div class="pair-step-icon">🔐</div>
-        <h3>Connexion WikiMasters</h3>
-        <p class="muted">Une page WikiMasters temporaire va s’ouvrir ici. Tu te connectes normalement et tu valides toi-même le CAPTCHA.</p>
+        <div class="pair-step-icon">💻</div>
+        <h3>Connexion unique depuis un PC</h3>
+        <p class="muted">Le PC sert seulement une fois à transférer ta session WikiMasters vers cette PWA. Ensuite le téléphone reste connecté.</p>
 
-        <div id="remoteCredentials">
-          <label class="field">
-            <span>Email WikiMasters</span>
-            <input id="wikiEmail" type="email" autocomplete="username" placeholder="toi@exemple.com" />
-          </label>
-
-          <label class="field">
-            <span>Mot de passe</span>
-            <input id="wikiPassword" type="password" autocomplete="current-password" placeholder="••••••••" />
-          </label>
-
-          <button id="startBrowserLoginButton" class="button primary full-width">Ouvrir WikiMasters</button>
+        <div class="pc-pair-code">
+          <span>Code à saisir sur le PC</span>
+          <strong id="pairCode">—</strong>
         </div>
 
-        <div id="remoteBrowserPanel" class="remote-browser-panel" hidden>
-          <p class="tiny"><b>Page WikiMasters réelle :</b> touche directement le CAPTCHA puis “Connexion” dans l’image ci-dessous.</p>
-          <div class="remote-browser-frame">
-            <img id="remoteBrowserImage" alt="Page de connexion WikiMasters distante" />
-            <div id="remoteBrowserLoading" class="remote-browser-loading">Chargement de WikiMasters…</div>
-          </div>
-          <p id="remoteBrowserStatus" class="tiny">Session temporaire active pendant 10 minutes.</p>
-        </div>
+        <ol class="pc-pair-steps">
+          <li>Sur un PC, ouvre <b>wiki-masters.com</b> et connecte-toi normalement.</li>
+          <li>Ouvre les outils développeur avec <b>F12</b>, puis l’onglet <b>Console</b>.</li>
+          <li>Colle la commande ci-dessous et appuie sur Entrée.</li>
+          <li>Quand elle te le demande, tape le code affiché ci-dessus.</li>
+        </ol>
 
+        <textarea id="pcPairCommand" class="pc-command" readonly rows="3"></textarea>
+        <button id="copyPcCommand" class="button primary full-width">Copier la commande PC</button>
+
+        <div class="waiting-pill"><span class="spinner"></span> J’attends la connexion du PC…</div>
+        <p class="tiny">Le code expire après 10 minutes. Ton mot de passe n’est jamais envoyé à WikiMaster Auto.</p>
         <button id="cancelLoginButton" class="button ghost">Annuler</button>
       </div>
     </section>
@@ -164,7 +158,7 @@
     <button id="updateButton" class="button primary small-button">Mettre à jour</button>
   </aside>
 
-  <script src="./runtime-config.js?v=remote-login-1"></script>
-  <script type="module" src="./app.js?v=remote-login-1"></script>
+  <script src="./runtime-config.js?v=pc-pair-1"></script>
+  <script type="module" src="./app.js?v=pc-pair-1"></script>
 </body>
 </html>
