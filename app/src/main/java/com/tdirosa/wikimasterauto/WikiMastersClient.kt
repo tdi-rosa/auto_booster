@@ -3,12 +3,15 @@ package com.tdirosa.wikimasterauto
 import android.content.Context
 import org.json.JSONObject
 
-enum class Rarity {
-    COMMON,
-    UNCOMMON,
-    RARE,
-    SUPER_RARE,
-    LEGENDARY
+enum class Rarity(val code: String, val rank: Int) {
+    COMMON("C", 0),
+    UNCOMMON("PC", 1),
+    RARE("R", 2),
+    SUPER_RARE("SR", 3),
+    ULTRA_RARE("UR", 4),
+    LEGENDARY("L", 5);
+
+    fun isAboveSuperRare(): Boolean = rank > SUPER_RARE.rank
 }
 
 data class WikiCard(
@@ -18,6 +21,7 @@ data class WikiCard(
     val imageUrl: String?,
     val category: String?,
     val rarity: Rarity,
+    val rarityOrder: Int?,
     val attack: Int?,
     val defense: Int?
 )
@@ -38,7 +42,7 @@ class WikiMastersClient(private val context: Context) {
     }
 
     suspend fun openAllAvailableBoosters(): List<WikiCard> {
-        // TODO: call POST /api/packs/open and parse each JSON response below.
+        // TODO: call POST /api/packs/open repeatedly and parse each response below.
         throw WikiMastersNotConfiguredException()
     }
 
@@ -49,7 +53,6 @@ class WikiMastersClient(private val context: Context) {
         val cards = buildList {
             for (i in 0 until cardsJson.length()) {
                 val card = cardsJson.getJSONObject(i)
-
                 add(
                     WikiCard(
                         id = card.getString("id"),
@@ -58,6 +61,7 @@ class WikiMastersClient(private val context: Context) {
                         imageUrl = card.optNullableString("image_url"),
                         category = card.optNullableString("category"),
                         rarity = parseRarity(card.optString("rarity", "C")),
+                        rarityOrder = card.optNullableInt("rarity_order"),
                         attack = card.optNullableInt("atk"),
                         defense = card.optNullableInt("def")
                     )
@@ -73,10 +77,11 @@ class WikiMastersClient(private val context: Context) {
 
     private fun parseRarity(value: String): Rarity = when (value.uppercase()) {
         "C" -> Rarity.COMMON
-        "U", "UC" -> Rarity.UNCOMMON
+        "PC" -> Rarity.UNCOMMON
         "R" -> Rarity.RARE
-        "SR", "S" -> Rarity.SUPER_RARE
-        "L", "LR", "LEGENDARY" -> Rarity.LEGENDARY
+        "SR" -> Rarity.SUPER_RARE
+        "UR" -> Rarity.ULTRA_RARE
+        "L" -> Rarity.LEGENDARY
         else -> Rarity.COMMON
     }
 
