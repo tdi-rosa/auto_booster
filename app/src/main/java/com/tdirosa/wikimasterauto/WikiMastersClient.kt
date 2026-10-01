@@ -2,6 +2,7 @@ package com.tdirosa.wikimasterauto
 
 import android.content.Context
 import android.webkit.CookieManager
+import kotlinx.coroutines.delay
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -14,7 +15,9 @@ enum class Rarity(val code: String, val rank: Int) {
     ULTRA_RARE("UR", 4),
     LEGENDARY("L", 5);
 
-    fun isAboveSuperRare(): Boolean = rank > SUPER_RARE.rank
+    companion object {
+        fun fromRank(rank: Int): Rarity = entries.firstOrNull { it.rank == rank } ?: ULTRA_RARE
+    }
 }
 
 data class WikiCard(
@@ -34,28 +37,65 @@ data class OpenPackResponse(
     val packsRemaining: Int
 )
 
+data class OpenAllResult(
+    val cards: List<WikiCard>,
+    val boostersOpened: Int,
+    val packsRemaining: Int
+)
+
 class WikiMastersNotConfiguredException : IllegalStateException(
     "No WikiMasters session found. Please log in from the app first."
 )
 
+class WikiMastersHttpException(
+    val statusCode: Int,
+    message: String
+) : IllegalStateException(message)
+
 class WikiMastersClient(private val context: Context) {
 
-    suspend fun openAllAvailableBoosters(): List<WikiCard> {
+    suspend fun openAllAvailableBoosters(): OpenAllResult {
         val allCards = mutableListOf<WikiCard>()
+        var boostersOpened = 0
+        var packsRemaining = -1
 
-        var response = openOnePack()
-        allCards += response.cards
-
-        while (response.packsRemaining > 0) {
-            response = openOnePack()
+        while (boostersOpened < MAX_PACKS_PER_RUN) {
+            val response = openOnePackWithRetry()
+            boostersOpened += 1
             allCards += response.cards
+            packsRemaining = response.packsRemaining
+
+            if (packsRemaining <= 0) break
+
+            delay(850)
         }
 
-        return allCards
+        return OpenAllResult(
+            cards = allCards,
+            boostersOpened = boostersOpened,
+            packsRemaining = packsRemaining
+        )
+    }
+
+    private suspend fun openOnePackWithRetry(): OpenPackResponse {
+        var lastError: Exception? = null
+
+        repeat(3) { attempt ->
+            try {
+                return openOnePack()
+            } catch (e: WikiMastersHttpException) {
+                lastError = e
+                if (e.statusCode !in listOf(409, 425, 429, 500, 502, 503, 504)) throw e
+                delay(1_000L * (attempt + 1))
+            }
+        }
+
+        throw lastError ?: IllegalStateException("Unable to open booster")
     }
 
     private fun openOnePack(): OpenPackResponse {
-        val cookie = CookieManager.getInstance()
+        val cookieManager = CookieManager.getInstance()
+        val cookie = cookieManager
             .getCookie(BASE_URL)
             ?.takeIf { it.isNotBlank() }
             ?: throw WikiMastersNotConfiguredException()
@@ -65,25 +105,31 @@ class WikiMastersClient(private val context: Context) {
             connectTimeout = 15_000
             readTimeout = 15_000
             doInput = true
-            doOutput = false
+            doOutput = true
+            setFixedLengthStreamingMode(0)
             setRequestProperty("Accept", "application/json")
+            setRequestProperty("Content-Type", "application/json")
             setRequestProperty("Cookie", cookie)
             setRequestProperty("Origin", BASE_URL)
             setRequestProperty("Referer", "$BASE_URL/pulls")
         }
 
         try {
+            connection.outputStream.use { }
             val status = connection.responseCode
-            val stream = if (status in 200..299) {
-                connection.inputStream
-            } else {
-                connection.errorStream
-            }
 
+            connection.headerFields["Set-Cookie"]
+                ?.forEach { cookieManager.setCookie(BASE_URL, it) }
+            cookieManager.flush()
+
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
 
             if (status !in 200..299) {
-                throw IllegalStateException("WikiMasters HTTP $status: $body")
+                throw WikiMastersHttpException(
+                    status,
+                    "WikiMasters HTTP $status: ${body.take(300)}"
+                )
             }
 
             return parseOpenPackResponse(body)
@@ -140,5 +186,6 @@ class WikiMastersClient(private val context: Context) {
     companion object {
         const val BASE_URL = "https://www.wiki-masters.com"
         const val OPEN_PACK_URL = "$BASE_URL/api/packs/open"
+        private const val MAX_PACKS_PER_RUN = 10
     }
 }
