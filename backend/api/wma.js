@@ -33,7 +33,8 @@ import {
 import {
   loginWithPassword,
   openAllAvailablePacks,
-  validateRefreshToken
+  validateRefreshToken,
+  validateSession
 } from "../lib/wiki.js";
 
 const RARITY_RANK = { C: 0, PC: 1, R: 2, SR: 3, UR: 4, L: 5 };
@@ -253,7 +254,9 @@ export default async function handler(req, res) {
         return send(res, 404, { error: "pairing_expired" });
       }
 
-      const verified = await validateRefreshToken(String(body.refreshToken || ""));
+      const verified = body.session
+        ? await validateSession(body.session)
+        : await validateRefreshToken(String(body.refreshToken || ""));
       const client = await getClient(clientId);
       if (!client) {
         return send(res, 404, { error: "client_not_found" });
