@@ -307,7 +307,19 @@ export default async function handler(req, res) {
         return send(res, 400, { error: "missing_credentials" });
       }
 
-      const verified = await loginWithPassword(email, password, captchaToken);
+      let verified;
+      try {
+        verified = await loginWithPassword(email, password, captchaToken);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn("WMA_LOGIN_FAILED", message.replace(email, "<email>"));
+        return send(res, 401, {
+          error: "login_failed",
+          message: /captcha/i.test(message)
+            ? "CAPTCHA refusé par WikiMasters. Recharge-le puis réessaie."
+            : "Email, mot de passe ou CAPTCHA refusé par WikiMasters."
+        });
+      }
 
       client.paired = true;
       client.encryptedSession = encryptJson(verified.session);
