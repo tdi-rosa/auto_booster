@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.0-pwa";
+const APP_VERSION = "0.5.1-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
