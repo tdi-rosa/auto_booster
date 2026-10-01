@@ -14,23 +14,26 @@ class BoosterWorker(
         val manualRun = inputData.getBoolean("manual_run", false)
         val automaticEnabled = prefs.getBoolean("enabled", false)
 
-        if (!manualRun && !automaticEnabled) {
-            return Result.success()
-        }
+        if (!manualRun && !automaticEnabled) return Result.success()
 
         return try {
             val client = WikiMastersClient(applicationContext)
-            val cards = client.openAllAvailableBoosters()
-            val rareCards = cards.filter { it.rarity.isAboveSuperRare() }
+            val result = client.openAllAvailableBoosters()
 
-            if (rareCards.isNotEmpty()) {
-                RareHistoryStore.addAll(applicationContext, rareCards)
-                NotificationHelper.notifyRarePulls(applicationContext, rareCards)
+            val minimumRank = prefs.getInt("notification_min_rank", Rarity.ULTRA_RARE.rank)
+            val interestingCards = result.cards.filter { it.rarity.rank >= minimumRank }
+
+            if (interestingCards.isNotEmpty()) {
+                RareHistoryStore.addAll(applicationContext, interestingCards)
+                NotificationHelper.notifyRarePulls(applicationContext, interestingCards)
             }
 
             prefs.edit()
                 .putLong("last_open_at", System.currentTimeMillis())
-                .putInt("last_cards_opened", cards.size)
+                .putInt("last_cards_opened", result.cards.size)
+                .putInt("last_boosters_opened", result.boostersOpened)
+                .putInt("last_packs_remaining", result.packsRemaining)
+                .putString("last_error", "")
                 .apply()
 
             if (automaticEnabled) {
@@ -39,9 +42,14 @@ class BoosterWorker(
 
             Result.success()
         } catch (e: WikiMastersNotConfiguredException) {
+            prefs.edit().putString("last_error", e.message ?: "Session missing").apply()
             NotificationHelper.notifyNeedsSetup(applicationContext)
             Result.success()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            prefs.edit()
+                .putString("last_error", e.message ?: e.javaClass.simpleName)
+                .apply()
+
             if (!manualRun && automaticEnabled) {
                 AutomationScheduler.scheduleNext(applicationContext, 15)
             }
