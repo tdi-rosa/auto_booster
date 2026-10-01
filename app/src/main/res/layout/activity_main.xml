@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="WikiMaster Auto"
+        android:textSize="28sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/statusText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="Automation inactive"
+        android:textSize="18sp" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/automationSwitch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:text="Enable automatic opening" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:text="The app checks roughly every 95 minutes. When WikiMasters reports 10 boosters, it will open them and notify you if a pull reaches the configured rarity threshold.
+
+The WikiMasters API adapter is intentionally isolated in WikiMastersClient.kt; once the real endpoints/session format are known, only that file needs to be completed."
+        android:textSize="15sp" />
+</LinearLayout>
