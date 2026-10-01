@@ -27,12 +27,17 @@
         android:layout_marginTop="28dp"
         android:text="Enable automatic opening" />
 
+    <Button
+        android:id="@+id/openNowButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="Open all boosters now" />
+
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="28dp"
-        android:text="The app checks roughly every 95 minutes. When WikiMasters reports 10 boosters, it will open them and notify you if a pull reaches the configured rarity threshold.
-
-The WikiMasters API adapter is intentionally isolated in WikiMastersClient.kt; once the real endpoints/session format are known, only that file needs to be completed."
+        android:text="Automatic mode checks roughly every 95 minutes. When WikiMasters reports 10 boosters, it opens them. The manual button runs the same opening flow immediately, even if automation is turned off."
         android:textSize="15sp" />
 </LinearLayout>
