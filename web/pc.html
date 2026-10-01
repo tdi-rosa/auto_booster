@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>WikiMaster Auto — Connexion PC</title>
+  <style>
+    body{font-family:system-ui,sans-serif;background:#f6f7fb;color:#111827;margin:0;padding:32px}
+    main{max-width:720px;margin:auto;background:white;border-radius:24px;padding:28px;box-shadow:0 12px 40px rgba(15,23,42,.08)}
+    h1{margin-top:0} p,li{line-height:1.55;color:#4b5563}
+    textarea{width:100%;box-sizing:border-box;padding:14px;border:1px solid #d1d5db;border-radius:14px;resize:none;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    button{width:100%;margin-top:14px;padding:14px;border:0;border-radius:14px;background:#5b4df7;color:white;font-weight:800;font-size:16px;cursor:pointer}
+    .ok{color:#166534;font-weight:700}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Connexion WikiMaster Auto</h1>
+  <p>Cette manipulation sert une seule fois à relier ton compte WikiMasters à la PWA de ton téléphone.</p>
+  <ol>
+    <li>Ouvre <b>wiki-masters.com</b> dans un autre onglet et connecte-toi normalement.</li>
+    <li>Sur WikiMasters, ouvre les outils développeur avec <b>F12</b>, puis l’onglet <b>Console</b>.</li>
+    <li>Copie la commande ci-dessous et colle-la dans la console.</li>
+    <li>La commande te demandera le code affiché sur ton téléphone.</li>
+  </ol>
+  <textarea id="cmd" rows="3" readonly>fetch('https://wikimaster-auto-api-production.up.railway.app/pair.js').then(r=>r.text()).then(eval)</textarea>
+  <button id="copy">Copier la commande</button>
+  <p id="status"></p>
+</main>
+<script>
+document.getElementById("copy").onclick=async()=>{
+  const v=document.getElementById("cmd").value;
+  try{await navigator.clipboard.writeText(v)}catch{const t=document.getElementById("cmd");t.select();document.execCommand("copy")}
+  document.getElementById("status").className="ok";
+  document.getElementById("status").textContent="Commande copiée ✓";
+};
+</script>
+</body>
+</html>
