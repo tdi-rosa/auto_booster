@@ -20,12 +20,15 @@ class BoosterWorker(
             val client = WikiMastersClient(applicationContext)
             val result = client.openAllAvailableBoosters()
 
-            val minimumRank = prefs.getInt("notification_min_rank", Rarity.ULTRA_RARE.rank)
-            val interestingCards = result.cards.filter { it.rarity.rank >= minimumRank }
+            // Keep every pulled card in history.
+            RareHistoryStore.addAll(applicationContext, result.cards)
 
-            if (interestingCards.isNotEmpty()) {
-                RareHistoryStore.addAll(applicationContext, interestingCards)
-                NotificationHelper.notifyRarePulls(applicationContext, interestingCards)
+            // The rarity threshold only controls notifications.
+            val minimumRank = prefs.getInt("notification_min_rank", Rarity.ULTRA_RARE.rank)
+            val cardsToNotify = result.cards.filter { it.rarity.rank >= minimumRank }
+
+            if (cardsToNotify.isNotEmpty()) {
+                NotificationHelper.notifyRarePulls(applicationContext, cardsToNotify)
             }
 
             prefs.edit()
