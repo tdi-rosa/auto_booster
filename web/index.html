@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest?v=icon-v3" />
   <link rel="icon" href="./app-icon-v3.svg?v=3" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="./app-icon-v3.svg?v=3" />
-  <link rel="stylesheet" href="./styles.css?v=reveal-053" />
+  <link rel="stylesheet" href="./styles.css?v=reveal-055" />
 </head>
 <body>
   <div class="aurora aurora-one"></div>
@@ -161,8 +161,11 @@
         </div>
         <span id="newCardsProgress" class="new-cards-progress"></span>
       </div>
-      <div id="newCardStage" class="new-card-stage"></div>
-      <button id="newCardNext" class="button primary full-width">Suivante</button>
+      <div class="new-card-carousel">
+        <button id="newCardPrev" class="new-card-arrow new-card-arrow-left" type="button" aria-label="Carte précédente">←</button>
+        <div id="newCardStage" class="new-card-stage"></div>
+        <button id="newCardNext" class="new-card-arrow new-card-arrow-right" type="button" aria-label="Carte suivante">→</button>
+      </div>
     </section>
   </div>
 
@@ -173,6 +176,6 @@
   </aside>
 
   <script src="./runtime-config.js?v=design-051"></script>
-  <script type="module" src="./app.js?v=reveal-054"></script>
+  <script type="module" src="./app.js?v=reveal-055"></script>
 </body>
 </html>
