@@ -70,8 +70,8 @@ if(!ks.length)throw new Error("Session WikiMasters introuvable. Vérifie que tu 
 let raw=ks.map(k=>cs[k]).join("");
 if(raw.startsWith("base64-")){raw=raw.slice(7).replace(/-/g,"+").replace(/_/g,"/");raw+="=".repeat((4-raw.length%4)%4);raw=atob(raw)}
 let s=JSON.parse(raw);if(Array.isArray(s))s=s[0];
-if(!s?.refresh_token)throw new Error("Refresh token introuvable");
-const r=await fetch(B+"/api/wma?action=pair-complete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pairCode:C,refreshToken:s.refresh_token})});
+if(!s?.access_token||!s?.refresh_token)throw new Error("Session WikiMasters incomplète");
+const r=await fetch(B+"/api/wma?action=pair-complete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pairCode:C,session:s})});
 const j=await r.json().catch(()=>({}));
 if(!r.ok)throw new Error(j.error||("HTTP "+r.status));
 alert("WikiMaster Auto connecté ✓ Tu peux revenir sur ton téléphone.");
