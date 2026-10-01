@@ -8,6 +8,8 @@ import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
+import java.text.DateFormat
+import java.util.Date
 
 class MainActivity : AppCompatActivity() {
     private val notificationPermission = registerForActivityResult(
@@ -27,11 +29,14 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("wikimaster_auto", MODE_PRIVATE)
         val automationSwitch = findViewById<SwitchCompat>(R.id.automationSwitch)
         val openNowButton = findViewById<Button>(R.id.openNowButton)
+        val refreshHistoryButton = findViewById<Button>(R.id.refreshHistoryButton)
         val statusText = findViewById<TextView>(R.id.statusText)
+        val historyText = findViewById<TextView>(R.id.historyText)
 
         val enabled = prefs.getBoolean("enabled", false)
         automationSwitch.isChecked = enabled
         renderStatus(enabled, statusText)
+        renderHistory(historyText)
 
         if (enabled) AutomationScheduler.enable(this)
 
@@ -46,9 +51,32 @@ class MainActivity : AppCompatActivity() {
             AutomationScheduler.runNow(this)
             statusText.text = "Manual opening requested…"
         }
+
+        refreshHistoryButton.setOnClickListener {
+            renderHistory(historyText)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        findViewById<TextView?>(R.id.historyText)?.let { renderHistory(it) }
     }
 
     private fun renderStatus(enabled: Boolean, status: TextView) {
         status.text = if (enabled) "Automation active" else "Automation inactive"
+    }
+
+    private fun renderHistory(view: TextView) {
+        val pulls = RareHistoryStore.read(this)
+        if (pulls.isEmpty()) {
+            view.text = "No UR/L pulls recorded yet."
+            return
+        }
+
+        val formatter = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+        view.text = pulls.joinToString("\n\n") { pull ->
+            val date = formatter.format(Date(pull.pulledAtEpochMs))
+            "${pull.rarity} • ${pull.title}\n$date"
+        }
     }
 }
