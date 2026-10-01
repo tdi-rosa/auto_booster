@@ -16,6 +16,7 @@ const isStandalone =
 
 let deferredInstallPrompt = null;
 let waitingWorker = null;
+let deploymentVersion = null;
 
 function platformName() {
   if (isIOS) return "iPhone / iPad";
@@ -156,9 +157,35 @@ async function setupServiceWorker() {
   setInterval(() => registration.update().catch(() => {}), 5 * 60 * 1000);
 }
 
-function showUpdate(worker) {
-  waitingWorker = worker;
+function showUpdate(worker = null) {
+  if (worker) waitingWorker = worker;
   $("#updateBanner").hidden = false;
+}
+
+async function checkDeploymentVersion() {
+  try {
+    const response = await fetch(`./version.json?t=${Date.now()}`, {
+      cache: "no-store"
+    });
+    if (!response.ok) return;
+
+    const payload = await response.json();
+    const version = String(payload.version || "").trim();
+    if (!version) return;
+
+    if (deploymentVersion === null) {
+      deploymentVersion = version;
+      $("#versionLabel").textContent =
+        `WikiMaster Auto ${APP_VERSION} • ${version.slice(0, 7)}`;
+      return;
+    }
+
+    if (deploymentVersion !== version) {
+      showUpdate();
+    }
+  } catch (_) {
+    // Offline is expected for an installable PWA.
+  }
 }
 
 window.addEventListener("beforeinstallprompt", (event) => {
@@ -183,3 +210,8 @@ renderInstallState();
 setupSettings();
 setupActions();
 setupServiceWorker().catch(() => {});
+checkDeploymentVersion();
+setInterval(checkDeploymentVersion, 5 * 60 * 1000);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") checkDeploymentVersion();
+});
