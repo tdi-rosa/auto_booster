@@ -1,5 +1,12 @@
 import webpush from "web-push";
 import {
+  browserClick,
+  browserScreenshot,
+  cancelBrowserLogin,
+  fillBrowserCredentials,
+  startBrowserLogin
+} from "../lib/browser-login.js";
+import {
   ALLOWED_INTERVALS,
   PWA_ORIGINS,
   WIKI_ORIGINS,
@@ -295,6 +302,65 @@ export default async function handler(req, res) {
     const client = await authenticateClient(req);
     if (!client) {
       return send(res, 401, { error: "unauthorized" });
+    }
+
+    if (action === "browser-start" && req.method === "POST") {
+      const started = await startBrowserLogin(client.id);
+      return send(res, 200, started);
+    }
+
+    if (action === "browser-fill" && req.method === "POST") {
+      const body = await readJson(req);
+      const browserId = String(body.browserId || "");
+      const email = String(body.email || "").trim();
+      const password = String(body.password || "");
+      if (!browserId || !email || !password) {
+        return send(res, 400, { error: "missing_credentials" });
+      }
+      await fillBrowserCredentials(browserId, client.id, email, password);
+      return send(res, 200, { ok: true });
+    }
+
+    if (action === "browser-click" && req.method === "POST") {
+      const body = await readJson(req);
+      const browserId = String(body.browserId || "");
+      await browserClick(browserId, client.id, body.x, body.y);
+      return send(res, 200, { ok: true });
+    }
+
+    if (action === "browser-screen" && req.method === "GET") {
+      const browserId = String(req.query?.browserId || "");
+      const shot = await browserScreenshot(browserId, client.id);
+
+      if (shot.connected && shot.auth) {
+        client.paired = true;
+        client.encryptedSession = encryptJson(shot.auth);
+        client.userId = shot.auth.user?.id || null;
+        client.email = shot.auth.user?.email || null;
+        client.connectedAt = Date.now();
+        client.lastError = null;
+        await saveClient(client);
+        await cancelBrowserLogin(browserId, client.id);
+
+        return send(res, 200, {
+          connected: true,
+          status: publicClient(client, await historyCount(client.id))
+        });
+      }
+
+      return send(res, 200, {
+        connected: false,
+        imageBase64: shot.imageBase64,
+        width: shot.width,
+        height: shot.height,
+        url: shot.url
+      });
+    }
+
+    if (action === "browser-cancel" && req.method === "POST") {
+      const body = await readJson(req);
+      await cancelBrowserLogin(String(body.browserId || ""), client.id);
+      return send(res, 200, { ok: true });
     }
 
     if (action === "login" && req.method === "POST") {
