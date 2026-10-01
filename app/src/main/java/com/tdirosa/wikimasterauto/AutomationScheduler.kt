@@ -13,7 +13,8 @@ import java.util.concurrent.TimeUnit
 
 object AutomationScheduler {
     private const val PREFS = "wikimaster_auto"
-    private const val AUTO_WORK_NAME = "wikimaster-booster-auto"
+    private const val LEGACY_AUTO_WORK_NAME = "wikimaster-booster-auto"
+    private const val AUTO_WORK_NAME = "wikimaster-booster-auto-v3"
     const val MANUAL_WORK_NAME = "wikimaster-booster-manual"
     const val DEFAULT_INTERVAL_MINUTES = 100L
 
@@ -23,10 +24,12 @@ object AutomationScheduler {
             .coerceAtLeast(15L)
 
     fun ensureScheduled(context: Context) {
+        WorkManager.getInstance(context).cancelUniqueWork(LEGACY_AUTO_WORK_NAME)
         enqueuePeriodic(context, ExistingPeriodicWorkPolicy.KEEP, resetNextRun = false)
     }
 
     fun updateSchedule(context: Context) {
+        WorkManager.getInstance(context).cancelUniqueWork(LEGACY_AUTO_WORK_NAME)
         enqueuePeriodic(context, ExistingPeriodicWorkPolicy.UPDATE, resetNextRun = true)
     }
 
@@ -64,7 +67,9 @@ object AutomationScheduler {
     }
 
     fun disable(context: Context) {
-        WorkManager.getInstance(context).cancelUniqueWork(AUTO_WORK_NAME)
+        val workManager = WorkManager.getInstance(context)
+        workManager.cancelUniqueWork(AUTO_WORK_NAME)
+        workManager.cancelUniqueWork(LEGACY_AUTO_WORK_NAME)
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .remove("next_run_at")
