@@ -24,12 +24,27 @@
             android:text="Automation inactive"
             android:textSize="18sp" />
 
+        <TextView
+            android:id="@+id/sessionText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="WikiMasters session: not connected"
+            android:textSize="15sp" />
+
+        <Button
+            android:id="@+id/loginButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Connect to WikiMasters" />
+
         <androidx.appcompat.widget.SwitchCompat
             android:id="@+id/automationSwitch"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
-            android:text="Enable automatic opening" />
+            android:text="Enable automatic opening every ~100 min" />
 
         <Button
             android:id="@+id/openNowButton"
