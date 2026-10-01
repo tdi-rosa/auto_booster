@@ -88,6 +88,38 @@ async function runSchedulerTick() {
   }
 }
 
+async function testPasswordWithoutCaptcha() {
+  try {
+    const key = process.env.SUPABASE_ANON_KEY || "";
+    const response = await fetch(
+      "https://cyrxjeppjqsxxjayfrur.supabase.co/auth/v1/token?grant_type=password",
+      {
+        method: "POST",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email: "definitely-not-a-real-user@example.invalid",
+          password: "definitely-wrong-password"
+        })
+      }
+    );
+    const text = await response.text();
+    let body = null;
+    try { body = JSON.parse(text); } catch {}
+    console.log("WMA_PASSWORD_NO_CAPTCHA", JSON.stringify({
+      status: response.status,
+      error: body?.error || null,
+      errorCode: body?.error_code || null,
+      msg: body?.msg || body?.message || null
+    }));
+  } catch (error) {
+    console.error("WMA_PASSWORD_NO_CAPTCHA_ERROR", error.message);
+  }
+}
+
 async function scanWikiMastersTurnstile() {
   try {
     const response = await fetch("https://www.wiki-masters.com/login", {
@@ -161,6 +193,7 @@ server.listen(port, "0.0.0.0", () => {
   console.log(`WikiMaster Auto backend listening on :${port}`);
   setTimeout(logAuthCapabilities, 1500);
   setTimeout(scanWikiMastersTurnstile, 2500);
+  setTimeout(testPasswordWithoutCaptcha, 3500);
   setTimeout(runSchedulerTick, 15_000);
   setInterval(runSchedulerTick, 5 * 60_000);
 });
