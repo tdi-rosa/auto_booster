@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" role="img" aria-label="WikiMaster Auto">
+  <rect width="108" height="108" rx="24" fill="#F3F5F2"/>
+  <rect x="28" y="22" width="52" height="64" rx="11" fill="#FFFFFF" stroke="#17221C" stroke-width="5"/>
+  <path d="M41 40h26M41 51h20M41 62h14" fill="none" stroke="#17221C" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="70" cy="73" r="8" fill="#20B883"/>
+</svg>
