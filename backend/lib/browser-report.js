@@ -1,4 +1,4 @@
-const ROUTES = new Set(['profile', 'profil', 'packs', 'boosters', 'collection', 'login', 'connexion', 'auth', 'shop', 'boutique', 'play', 'game', 'dashboard']);
+const ROUTES = new Set(['profile', 'profil', 'packs', 'paquets', 'boosters', 'collection', 'login', 'connexion', 'auth', 'shop', 'boutique', 'play', 'game', 'dashboard']);
 export function safeRoute(raw) {
   try {
     const path = new URL(raw, 'https://www.wiki-masters.com').pathname;

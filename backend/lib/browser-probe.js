@@ -1,3 +1,4 @@
+import { findPackLink } from './pack-navigation.js';
 import { publicResource, safeRoute, reportFindings } from './browser-report.js';
 import { jwtPayload } from './security.js';
 import { waitForOpeningButton } from './button-wait.js';
@@ -7,7 +8,7 @@ import { captchaDiagnostic } from './captcha.js';
 import { buildWikiCookie } from './wiki.js';
 
 export async function probeBrowser(session, { tryOpen = false } = {}) {
-  const report = { schemaVersion: 3, kind: 'browser_probe', backendVersion: '0.5.14', capturedAt: new Date().toISOString(), mode: 'standard_headless_chromium', outcome: 'starting', requests: [], failures: [], pageErrors: [], verification: null, note: 'Chargement uniquement : aucun clic sur un CAPTCHA ou un bouton d’ouverture, aucun cookie ou jeton exporté.' };
+  const report = { schemaVersion: 3, kind: 'browser_probe', backendVersion: '0.5.15', capturedAt: new Date().toISOString(), mode: 'standard_headless_chromium', outcome: 'starting', requests: [], failures: [], pageErrors: [], verification: null, note: 'Chargement uniquement : aucun clic sur un CAPTCHA ou un bouton d’ouverture, aucun cookie ou jeton exporté.' };
   const started = performance.now();
   const elapsed = () => Math.round(performance.now() - started);
   report.timeline = [];
@@ -80,7 +81,7 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
         const clean = text => String(text || '').replace(/https?:\/\/\S+|[\w.+-]+@[\w.-]+\.\w+|[A-Za-z0-9_-]{30,}/g, '[masqué]').replace(/\s+/g, ' ').trim().slice(0, 100);
         const buttons = [...document.querySelectorAll('button,[role="button"]')].filter(visible);
         const visibleButtons = buttons.slice(0, 24).map(el => ({ label: clean(el.getAttribute('aria-label') || el.innerText), disabled: el.matches(':disabled') || el.getAttribute('aria-disabled') === 'true' }));
-        const links = [...document.querySelectorAll('a[href]')].filter(visible).slice(0, 30).map(el => { const u = new URL(el.href, location.href); const first = u.pathname.split('/')[1]; const allowed = ['profile','profil','packs','boosters','collection','login','connexion','auth','shop','boutique','play','game','dashboard']; return { label: clean(el.getAttribute('aria-label') || el.innerText), sameOrigin: u.origin === location.origin, route: u.pathname === '/' ? '/' : allowed.includes(first) ? '/' + first : 'other' }; });
+        const links = [...document.querySelectorAll('a[href]')].filter(visible).slice(0, 30).map(el => { const u = new URL(el.href, location.href); const first = u.pathname.split('/')[1]; const allowed = ['profile','profil','packs','paquets','boosters','collection','login','connexion','auth','shop','boutique','play','game','dashboard']; return { label: clean(el.getAttribute('aria-label') || el.innerText), sameOrigin: u.origin === location.origin, route: u.pathname === '/' ? '/' : allowed.includes(first) ? '/' + first : 'other' }; });
         const openingButtons = buttons.filter(el => /ouvrir|open|booster|paquet|pack/i.test(el.innerText + ' ' + el.getAttribute('aria-label'))).slice(0, 12).map(el => ({ label: clean(el.getAttribute('aria-label') || el.innerText), disabled: el.matches(':disabled') || el.getAttribute('aria-disabled') === 'true' }));
         return { visibleButtons, links, challengeFrameCount: [...document.querySelectorAll('iframe')].filter(el => visible(el) && /captcha|turnstile|challenge/i.test(el.src + el.title)).length, dialogCount: [...document.querySelectorAll('dialog,[role="dialog"]')].filter(visible).length, loadingIndicatorVisible: Boolean(document.querySelector('[aria-busy="true"],[role="progressbar"]')), signInControlVisible: buttons.some(el => /^(se connecter|connexion|sign in|log in)$/i.test(el.innerText.trim())), signOutControlVisible: buttons.some(el => /déconnexion|se déconnecter|sign out|log out/i.test(el.innerText)), readyState: document.readyState, visibleButtonCount: buttons.length, openingButtons, verificationVisible: /vérification rapide|verification rapide|anti.bot|verify you are human/i.test(document.body.innerText), loginFormVisible: [...document.querySelectorAll('input[type="password"]')].some(visible) };
       });
@@ -97,14 +98,25 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
     await snapshot('initial_document');
     let route = null;
     for (let i = 0; i < 6 && !route; i++) {
-      route = await page.locator('a[href]').evaluateAll(links => {
-        const routes = links.map(a => a.getAttribute('href')).filter(href => /^\/(packs|profile|profil)(?:\/|$)/.test(href || ''));
-        return routes.find(href => /^\/packs(?:\/|$)/.test(href)) || routes[0] || null;
-      });
+      const links = await page.locator('a[href]').evaluateAll(elements => elements.map(el => ({
+        label: el.getAttribute('aria-label') || el.innerText,
+        href: el.getAttribute('href'),
+        visible: Boolean(el.getClientRects().length) && getComputedStyle(el).visibility !== 'hidden'
+      })));
+      route = findPackLink(links, SITE_URL);
       if (!route) await page.waitForTimeout(1000);
     }
-    event('route_discovery', { found: Boolean(route) });
-    if (route) await page.goto(new URL(route, SITE_URL).href, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    report.navigation = { target: 'Paquets', found: Boolean(route), source: 'visible_navigation_link', reached: false };
+    event('route_discovery', { found: Boolean(route), target: 'Paquets' });
+    if (route) {
+      event('packs_navigation_start');
+      const packResponse = await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 15000 });
+      report.navigation.status = packResponse?.status() || null;
+      report.navigation.reached = new URL(page.url()).pathname === new URL(route).pathname;
+      report.navigation.route = safeRoute(page.url());
+      event('packs_navigation_complete', report.navigation);
+      await snapshot('packs_document');
+    }
     await page.waitForTimeout(2500);
     event('cookie_authentication_check_start');
     report.authentication.cookieCheck = await page.evaluate(async () => {
@@ -115,7 +127,7 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
     });
     event('cookie_authentication_check_finished', report.authentication.cookieCheck);
     await snapshot('after_authentication_check');
-    if (tryOpen) {
+    if (tryOpen && report.navigation.reached) {
       report.note = 'Un seul clic sur le bouton d’ouverture du site. Observation de la vérification automatique sans interaction avec le CAPTCHA. Aucun cookie ou jeton exporté.';
       const button = page.getByRole('button', { name: /^(ouvrir|open)\s+(un\s+|le\s+|1\s+|a\s+|the\s+)?(booster|paquet|pack)(?:\s|$)/i }).filter({ visible: true }).first();
       event('button_wait_start');
@@ -140,6 +152,7 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
         event('button_wait_finished', { reason: report.opening.reason });
       }
     }
+    if (tryOpen && !report.navigation.reached) report.opening.reason = route ? 'packs_navigation_redirected' : 'packs_navigation_link_not_found';
     await Promise.allSettled(responseTasks);
     await snapshot('final_page');
     report.pendingRequestCount = pendingRequests.size;
