@@ -1,11 +1,16 @@
 // Deliberately allowlisted metadata: never persist raw bodies, cookies or tokens.
+export function isCaptchaMessage(value) {
+  const normalized = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return /captcha|turnstile|anti[ _-]?bot|human[ _-](verification|required)|verification[ _-](humaine|requise)|bot[ _-]detected|challenge[ _-]required/i.test(normalized);
+}
+
 export function captchaDiagnostic(response, text, endpoint, method = "POST") {
   let body;
   try { body = JSON.parse(text); } catch {}
   const fields = [body?.error, body?.code, body?.error_code, body?.message, body?.msg];
   const signals = fields.filter(value => typeof value === "string").join(" ");
   const htmlChallenge = /(?:cf-turnstile|g-recaptcha|h-captcha|challenges.cloudflare.com|captcha)/i.test(text);
-  if (!/captcha|turnstile|human.verification|human.required|bot.detected|challenge.required/i.test(signals)
+  if (!isCaptchaMessage(signals)
       && !(response.status >= 400 && htmlChallenge)
       && response.headers.get("cf-mitigated") !== "challenge") return null;
   const provider = /turnstile|challenges.cloudflare.com/i.test(text) ? "Cloudflare Turnstile"

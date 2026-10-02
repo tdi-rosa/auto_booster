@@ -1,4 +1,4 @@
-import { CaptchaRequiredError } from "../lib/captcha.js";
+import { CaptchaRequiredError, isCaptchaMessage } from "../lib/captcha.js";
 import webpush from "web-push";
 import {
   browserClick,
@@ -37,6 +37,14 @@ import {
   validateRefreshToken,
   validateSession
 } from "../lib/wiki.js";
+
+async function pauseLegacyCaptcha(client) {
+  if (!client?.settings?.enabled || !isCaptchaMessage(client.lastError)) return;
+  client.settings.enabled = false;
+  client.nextRunAt = null;
+  await saveClient(client);
+  await unscheduleClient(client.id);
+}
 
 const RARITY_RANK = { C: 0, PC: 1, R: 2, SR: 3, UR: 4, L: 5 };
 
@@ -144,6 +152,7 @@ async function runClient(clientId, { manual = false } = {}) {
       return { ok: false, skipped: true, reason: "not_paired" };
     }
 
+    await pauseLegacyCaptcha(client);
     if (!manual && !client.settings?.enabled) {
       await unscheduleClient(clientId);
       return { ok: false, skipped: true, reason: "disabled" };
@@ -430,6 +439,7 @@ export default async function handler(req, res) {
     }
 
     if (action === "status" && req.method === "GET") {
+      await pauseLegacyCaptcha(client);
       return send(
         res,
         200,
@@ -458,6 +468,7 @@ export default async function handler(req, res) {
 
       if (typeof body.enabled === "boolean") {
         settings.enabled = body.enabled;
+        if (body.enabled && isCaptchaMessage(client.lastError)) client.lastError = null;
       }
 
       if (body.intervalMinutes !== undefined) {

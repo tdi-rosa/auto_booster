@@ -30,3 +30,8 @@ test('a CAPTCHA stops on the first request and preserves partial context', async
     assert.equal(calls, 1);
   } finally { globalThis.fetch = original; }
 });
+
+test('recognizes the French anti-bot error reported by WikiMasters', () => {
+  const body = JSON.stringify({ error: 'Vérification anti-bot requise' });
+  assert.ok(captchaDiagnostic(new Response(body, { status: 403 }), body, '/api/packs/open'));
+});

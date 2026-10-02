@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.6-pwa";
+const APP_VERSION = "0.5.7-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
@@ -897,7 +897,14 @@ function renderDiagnostic(status) {
     button.textContent = "Exporter le dernier diagnostic CAPTCHA";
     document.querySelector("#openNowButton").insertAdjacentElement("afterend", button);
     button.addEventListener("click", () => {
-      const report = currentStatus?.captchaDiagnostic;
+      const report = currentStatus?.captchaDiagnostic || {
+        capturedAt: null,
+        lastRunAt: currentStatus?.lastRunAt || null,
+        provider: "inconnu",
+        errorType: "verification_antibot_requise",
+        automationEnabled: Boolean(currentStatus?.settings?.enabled),
+        note: "Blocage antérieur sans diagnostic serveur. Ce rapport ne contient pas la réponse HTTP originale."
+      };
       if (!report) return;
       const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: "application/json" }));
       const link = document.createElement("a");
@@ -907,14 +914,16 @@ function renderDiagnostic(status) {
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     });
   }
-  button.hidden = !status?.captchaDiagnostic;
+  const normalizedError = String(status?.lastError || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  button.hidden = !status?.captchaDiagnostic && !/captcha|turnstile|anti[ _-]?bot|verification[ _-](humaine|requise)/i.test(normalizedError);
 }
 
 const RELEASE_NOTES = [
-  "L’Auto Opener se désactive lorsqu’un CAPTCHA est détecté et arrête les tentatives automatiques.",
+  "Correction : les messages « Vérification anti-bot requise » déclenchent maintenant le diagnostic et la désactivation automatique.",
+  "Le bouton d’export apparaît aussi pour un ancien blocage, avec un rapport limité si les informations originales n’ont pas été conservées.",
   "Une notification signale le blocage. Le dernier diagnostic CAPTCHA peut être exporté depuis l’application, sans cookies ni jetons de connexion.",
   "Les cartes obtenues avant le blocage restent dans l’historique.",
-  "Les nouveautés s’affichent au premier lancement après une mise à jour."
+  "L’état et l’historique s’actualisent au retour dans l’application, puis toutes les 30 secondes lorsqu’elle est visible."
 ];
 function showReleaseNotes() {
   const key = "wma_release_notes_seen";
@@ -940,3 +949,16 @@ function showReleaseNotes() {
   dialog.showModal();
 }
 showReleaseNotes();
+
+// Installed PWAs may resume through focus/pageshow without visibilitychange.
+let resumeRefresh = null;
+function refreshOnResume() {
+  if (document.visibilityState !== "visible" || resumeRefresh) return;
+  resumeRefresh = Promise.allSettled([
+    checkDeploymentVersion(),
+    refreshStatus({ quiet: true })
+  ]).finally(() => { resumeRefresh = null; });
+}
+window.addEventListener("focus", refreshOnResume);
+window.addEventListener("pageshow", refreshOnResume);
+setInterval(refreshOnResume, 30_000);
