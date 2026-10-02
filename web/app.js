@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.11-pwa";
+const APP_VERSION = "0.5.12-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
@@ -921,7 +921,7 @@ function renderDiagnostic(status) {
 }
 
 const RELEASE_NOTES = [
-  "Lors d’une ouverture manuelle bloquée par l’anti-bot, un test navigateur en arrière-plan se lance automatiquement et crée un rapport. Si la page charge sans vérification détectée, l’ouverture est retentée une seule fois.",
+  "Après un blocage anti-bot lors d’une ouverture manuelle, le navigateur en arrière-plan tente maintenant un seul clic sur le bouton d’ouverture du site et observe le résultat pendant 25 secondes. Le rapport indique le clic, les réponses et le résultat.",
   "L’Auto Opener reste désactivé après un blocage. Le rapport navigateur contient le blocage initial et le résultat de la nouvelle tentative.",
   "Nouveau test navigateur en arrière-plan avec rapport exportable. Il charge la page sans ouvrir de booster ni interagir avec la vérification.",
   "Rapport enrichi : version serveur, en-têtes techniques, structure de réponse, messages anti-bot et contexte de la tentative.",

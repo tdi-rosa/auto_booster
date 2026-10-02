@@ -77,7 +77,7 @@ async function readJson(req) {
 
 function publicClient(client, count = null) {
   return {
-    backendVersion: "0.5.11",
+    backendVersion: "0.5.12",
     requestDiagnostic: client?.requestDiagnostic || null,
     browserDiagnostic: client?.browserDiagnostic || null,
     connected: Boolean(client?.paired),
@@ -167,7 +167,7 @@ async function runClient(clientId, { manual = false } = {}) {
     const result = manual
       ? await openWithBrowserReport(storedSession, {
           open: openAllAvailablePacks,
-          probe: probeBrowser,
+          probe: session => probeBrowser(session, { tryOpen: true }),
           onBlocked: async (error) => {
             client.settings = { ...client.settings, enabled: false };
             client.nextRunAt = null;
@@ -259,7 +259,7 @@ export default async function handler(req, res) {
 
   try {
     if (action === "health") {
-      return send(res, 200, { ok: true, service: "wikimaster-auto", version: "0.5.11", commit: process.env.RAILWAY_GIT_COMMIT_SHA || null });
+      return send(res, 200, { ok: true, service: "wikimaster-auto", version: "0.5.12", commit: process.env.RAILWAY_GIT_COMMIT_SHA || null });
     }
 
     if (action === "auth-capabilities") {

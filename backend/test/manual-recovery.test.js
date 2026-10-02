@@ -18,3 +18,18 @@ test('a second block stops and retains cards from both attempts', async () => {
   await assert.rejects(openWithBrowserReport({}, { open: async () => { opens++; throw blocked(); }, probe: async () => ({ outcome: 'page_loaded' }), onBlocked: async () => {} }), e => e.browserDiagnostic.retry.outcome === 'antibot_still_required' && e.partialResult.cards.length === 2);
   assert.equal(opens, 2);
 });
+test('site opening stores cards without making another API opening request', async () => {
+  let opens = 0;
+  const result = await openWithBrowserReport({}, {
+    open: async () => { opens++; throw blocked(); },
+    probe: async () => { const report = { outcome: 'booster_opened', opening: { requested: true, clicked: true } }; Object.defineProperty(report, 'openingResult', { value: { session: {}, cards: ['browser'], packsOpened: 1 } }); return report; },
+    onBlocked: async () => {}
+  });
+  assert.equal(opens, 1); assert.deepEqual(result.cards, ['first', 'browser']);
+  assert.equal(JSON.stringify(result.browserDiagnostic).includes('openingResult'), false);
+});
+test('unconfirmed site click stops without another API attempt', async () => {
+  let opens = 0;
+  await assert.rejects(openWithBrowserReport({}, { open: async () => { opens++; throw blocked(); }, probe: async () => ({ outcome: 'opening_not_confirmed', opening: { requested: true, clicked: true } }), onBlocked: async () => {} }), e => e.browserDiagnostic.retry.via === 'site_button');
+  assert.equal(opens, 1);
+});
