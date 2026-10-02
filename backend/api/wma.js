@@ -77,7 +77,7 @@ async function readJson(req) {
 
 function publicClient(client, count = null) {
   return {
-    backendVersion: "0.5.15",
+    backendVersion: "0.5.16",
     requestDiagnostic: client?.requestDiagnostic || null,
     browserDiagnostic: client?.browserDiagnostic || null,
     connected: Boolean(client?.paired),
@@ -259,7 +259,7 @@ export default async function handler(req, res) {
 
   try {
     if (action === "health") {
-      return send(res, 200, { ok: true, service: "wikimaster-auto", version: "0.5.15", commit: process.env.RAILWAY_GIT_COMMIT_SHA || null });
+      return send(res, 200, { ok: true, service: "wikimaster-auto", version: "0.5.16", commit: process.env.RAILWAY_GIT_COMMIT_SHA || null });
     }
 
     if (action === "auth-capabilities") {

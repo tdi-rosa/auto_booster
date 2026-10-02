@@ -1,3 +1,4 @@
+import { networkDiagnostic, isNonFatalDnsProbe } from './network-diagnostic.js';
 import { findPackLink } from './pack-navigation.js';
 import { publicResource, safeRoute, reportFindings } from './browser-report.js';
 import { jwtPayload } from './security.js';
@@ -8,7 +9,7 @@ import { captchaDiagnostic } from './captcha.js';
 import { buildWikiCookie } from './wiki.js';
 
 export async function probeBrowser(session, { tryOpen = false } = {}) {
-  const report = { schemaVersion: 3, kind: 'browser_probe', backendVersion: '0.5.15', capturedAt: new Date().toISOString(), mode: 'standard_headless_chromium', outcome: 'starting', requests: [], failures: [], pageErrors: [], verification: null, note: 'Chargement uniquement : aucun clic sur un CAPTCHA ou un bouton d’ouverture, aucun cookie ou jeton exporté.' };
+  const report = { schemaVersion: 3, kind: 'browser_probe', backendVersion: '0.5.16', capturedAt: new Date().toISOString(), mode: 'standard_headless_chromium', outcome: 'starting', requests: [], failures: [], pageErrors: [], verification: null, note: 'Chargement uniquement : aucun clic sur un CAPTCHA ou un bouton d’ouverture, aucun cookie ou jeton exporté.' };
   const started = performance.now();
   const elapsed = () => Math.round(performance.now() - started);
   report.timeline = [];
@@ -19,6 +20,7 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
   report.truncated = { requests: false, timeline: false };
   report.limits = { buttonWaitMs: 15000, observationMs: 25000 };
   const event = (name, details = {}) => { if (report.timeline.length < 100) report.timeline.push({ elapsedMs: elapsed(), event: name, ...details }); else report.truncated.timeline = true; };
+  const networkCheck = networkDiagnostic();
   let browser;
   try {
     browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
@@ -33,7 +35,8 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
     report.runtime = { chromiumVersion: browser.version(), viewport: page.viewportSize() };
     page.on('console', message => {
       if (!['error', 'warning'].includes(message.type()) || report.consoleErrors.length >= 20) return;
-      report.consoleErrors.push({ elapsedMs: elapsed(), level: message.type(), category: /cors|cross.origin/i.test(message.text()) ? 'cors' : /network|fetch|load|resource/i.test(message.text()) ? 'resource_loading' : 'other' });
+      const turnstileCode = /turnstile|cloudflare/i.test(message.text()) ? message.text().match(/\b[1-9]\d{5}\b/)?.[0] || null : null;
+      report.consoleErrors.push({ turnstileCode, elapsedMs: elapsed(), level: message.type(), category: /cors|cross.origin/i.test(message.text()) ? 'cors' : /network|fetch|load|resource/i.test(message.text()) ? 'resource_loading' : 'other' });
     });
     const pendingRequests = new Set();
     page.on('request', request => pendingRequests.add(request));
@@ -70,7 +73,7 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
       if (report.requests.length < 100) report.requests.push({ elapsedMs: elapsed(), ...publicResource(response.url()), status: response.status(), method: response.request().method(), timing: response.request().timing(), type: response.request().resourceType() }); else report.truncated.requests = true;
     });
     page.on('requestfailed', request => {
-      if (report.failures.length < 20) report.failures.push({ elapsedMs: elapsed(), ...publicResource(request.url()), method: request.method(), type: request.resourceType(), reason: request.failure()?.errorText?.replace(/https?:\/\/\S+/g, '[URL]') || 'failed' });
+      if (report.failures.length < 20) report.failures.push({ elapsedMs: elapsed(), ...publicResource(request.url()), method: request.method(), type: request.resourceType(), interpretation: isNonFatalDnsProbe(request.url(), request.failure()?.errorText) ? 'expected_nonfatal_dns_probe' : 'unclassified_network_failure', reason: request.failure()?.errorText?.replace(/https?:\/\/\S+/g, '[URL]') || 'failed' });
     });
     page.on('pageerror', error => {
       if (report.pageErrors.length < 20) report.pageErrors.push({ elapsedMs: elapsed(), name: error.name, category: /network|fetch|load/i.test(error.message) ? 'resource_loading' : 'javascript_error' });
@@ -173,6 +176,7 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
     report.error = { name: error.name, category: /shared libraries|lib[^ ]+\.so/i.test(error.message) ? 'missing_system_library' : /executable.*exist/i.test(error.message) ? 'missing_browser_binary' : /executable|launch/i.test(error.message) ? 'browser_launch' : /timeout/i.test(error.message) ? 'timeout' : 'navigation_or_runtime' };
   } finally {
     if (browser) await browser.close().catch(() => {});
+    report.networkDiagnostic = await networkCheck;
     report.findings = reportFindings(report);
     report.durationMs = elapsed();
     report.completedAt = new Date().toISOString();

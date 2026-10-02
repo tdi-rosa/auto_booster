@@ -25,7 +25,10 @@ export function reportFindings(report) {
   if (last?.loginFormVisible || last?.signInControlVisible) findings.push({ code: 'sign_in_ui_visible', certainty: 'observed' });
   if (states.some(e => e.visibleButtonCount > (states[0]?.visibleButtonCount || 0))) findings.push({ code: 'interface_changed_after_document_load', certainty: 'observed' });
   if (report.opening?.reason) findings.push({ code: report.opening.reason, certainty: 'observed' });
-  if (report.failures?.length) findings.push({ code: 'network_failures', certainty: 'observed', count: report.failures.length });
+  const relevantFailures = (report.failures || []).filter(f => f.interpretation !== 'expected_nonfatal_dns_probe');
+  if (relevantFailures.length) findings.push({ code: 'network_failures', certainty: 'observed', count: relevantFailures.length });
+  if (report.networkDiagnostic?.https?.ok === true) findings.push({ code: 'cloudflare_script_reachable_from_server', certainty: 'observed' });
+  for (const code of new Set((report.consoleErrors || []).map(e => e.turnstileCode).filter(Boolean))) findings.push({ code: 'turnstile_error_code', value: code, certainty: 'observed' });
   if (report.pageErrors?.length) findings.push({ code: 'javascript_errors', certainty: 'observed', count: report.pageErrors.length });
   if (last?.verificationVisible) findings.push({ code: 'verification_visible', certainty: 'observed' });
   return findings;
