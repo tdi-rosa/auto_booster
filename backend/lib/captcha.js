@@ -21,7 +21,7 @@ export function captchaDiagnostic(response, text, endpoint, method = "POST", for
     .map(match => match[1]).filter(host => /(?:^|\.)(?:google\.com|gstatic\.com|recaptcha\.net|hcaptcha\.com|cloudflare\.com)$/.test(host));
   return {
     schemaVersion: 2,
-    backendVersion: "0.5.17",
+    backendVersion: "0.5.18",
     capturedAt: new Date().toISOString(), endpoint, method,
     kind: isCaptchaMessage(signals) || htmlChallenge ? "captcha" : "http_error",
     statusText: response.statusText,

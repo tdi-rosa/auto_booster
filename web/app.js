@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.17-pwa";
+const APP_VERSION = "0.5.18-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
@@ -926,6 +926,7 @@ function renderDiagnostic(status) {
 }
 
 const RELEASE_NOTES = [
+  "Les diagnostics navigateur remontent automatiquement dans les journaux privés du backend : plus besoin d’exporter un JSON pour chaque essai. Les identifiants, cookies et jetons sont masqués.",
   "Messages de console et erreurs JavaScript conservés après masquage des secrets. Vérification de compatibilité : cookies, stockage, WebGL, WebAssembly et erreurs visibles dans les cadres de vérification.",
   "Diagnostic réseau exécuté sur le serveur : DNS IPv4/IPv6 et accès HTTPS au script Cloudflare. Le rapport relève les codes d’erreur Turnstile et distingue les erreurs DNS de contrôle potentiellement attendues.",
   "Correction du test navigateur : il suit le lien « Paquets » réellement affiché par WikiMasters et attend le bouton sur cette page. Le rapport indique si le lien est trouvé et si la navigation aboutit.",
