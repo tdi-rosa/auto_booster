@@ -77,7 +77,7 @@ async function readJson(req) {
 
 function publicClient(client, count = null) {
   return {
-    backendVersion: "0.5.19",
+    backendVersion: "0.5.20",
     requestDiagnostic: client?.requestDiagnostic || null,
     browserDiagnostic: client?.browserDiagnostic || null,
     connected: Boolean(client?.paired),
@@ -144,7 +144,7 @@ async function sendPullNotification(client, cards) {
   }
 }
 
-export async function runClient(clientId, { manual = false } = {}) {
+export async function runClient(clientId, { manual = false, browserEngine = 'playwright' } = {}) {
   const lock = await acquireClientLock(clientId);
   if (!lock) {
     return { ok: false, skipped: true, reason: "already_running" };
@@ -167,7 +167,7 @@ export async function runClient(clientId, { manual = false } = {}) {
     const result = manual
       ? await openWithBrowserReport(storedSession, {
           open: openAllAvailablePacks,
-          probe: session => probeBrowser(session, { tryOpen: true }),
+          probe: session => probeBrowser(session, { tryOpen: true, engine: browserEngine }),
           onBlocked: async (error) => {
             client.settings = { ...client.settings, enabled: false };
             client.nextRunAt = null;
@@ -259,7 +259,7 @@ export default async function handler(req, res) {
 
   try {
     if (action === "health") {
-      return send(res, 200, { ok: true, service: "wikimaster-auto", version: "0.5.19", commit: process.env.RAILWAY_GIT_COMMIT_SHA || null });
+      return send(res, 200, { ok: true, service: "wikimaster-auto", version: "0.5.20", commit: process.env.RAILWAY_GIT_COMMIT_SHA || null });
     }
 
     if (action === "auth-capabilities") {

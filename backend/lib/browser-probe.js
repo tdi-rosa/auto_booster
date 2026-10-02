@@ -10,8 +10,11 @@ import { SITE_URL } from './config.js';
 import { captchaDiagnostic } from './captcha.js';
 import { buildWikiCookie } from './wiki.js';
 
-export async function probeBrowser(session, { tryOpen = false } = {}) {
-  const report = { schemaVersion: 3, kind: 'browser_probe', backendVersion: '0.5.19', capturedAt: new Date().toISOString(), mode: 'standard_headless_chromium', outcome: 'starting', requests: [], failures: [], pageErrors: [], verification: null, note: 'Chargement uniquement : aucun clic sur un CAPTCHA ou un bouton d’ouverture, aucun cookie ou jeton exporté.' };
+export async function probeBrowser(session, { tryOpen = false, engine = 'playwright' } = {}) {
+  const report = { schemaVersion: 3, kind: 'browser_probe', backendVersion: '0.5.20', capturedAt: new Date().toISOString(), mode: 'standard_headless_chromium', outcome: 'starting', requests: [], failures: [], pageErrors: [], verification: null, note: 'Chargement uniquement : aucun clic sur un CAPTCHA ou un bouton d’ouverture, aucun cookie ou jeton exporté.' };
+  report.engine = engine;
+  report.mode = engine === 'patchright' ? 'experimental_patchright_headless' : 'standard_headless_chromium';
+  report.consoleCaptureAvailable = engine !== 'patchright';
   const started = performance.now();
   const elapsed = () => Math.round(performance.now() - started);
   report.timeline = [];
@@ -27,7 +30,8 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
   const networkCheck = networkDiagnostic();
   let browser;
   try {
-    browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+    const browserType = engine === 'patchright' ? (await import('patchright')).chromium : chromium;
+    browser = await browserType.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
     event('browser_ready');
     const context = await browser.newContext();
     await context.addCookies(buildWikiCookie(session).split('; ').map(part => {

@@ -9,11 +9,12 @@
   "scripts": {
     "start": "node browser-smoke.js && node server.js",
     "check": "node --check server.js && node --check api/wma.js && node --check lib/config.js && node --check lib/security.js && node --check lib/storage.js && node --check lib/wiki.js && node --check lib/browser-login.js",
-    "postinstall": "npx playwright install --with-deps chromium"
+    "postinstall": "npx playwright install --with-deps chromium && npx patchright install --with-deps chromium"
   },
   "dependencies": {
     "redis": "^5.8.2",
     "web-push": "^3.6.7",
-    "playwright": "^1.55.0"
+    "playwright": "^1.55.0",
+    "patchright": "1.63.0"
   }
 }

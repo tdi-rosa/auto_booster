@@ -13,3 +13,10 @@ test('invalid or unavailable targets never run an opening', async () => {
   await runPrivateDebug('{',deps);await runPrivateDebug(raw,deps);
   assert.equal(runs,0);assert.equal(logs.at(-1).status,'target_unavailable');
 });
+
+test('experimental engine is explicit and unknown engines are rejected', async () => {
+  const options=[];const deps={claim:async()=>true,resolve:async()=> 'target',run:async(id,opts)=>{options.push(opts);return {ok:true};},write:()=>{}};
+  await runPrivateDebug(JSON.stringify({...JSON.parse(raw),engine:'patchright'}),deps);
+  await runPrivateDebug(JSON.stringify({...JSON.parse(raw),engine:'unexpected'}),deps);
+  assert.equal(options.length,1);assert.equal(options[0].browserEngine,'patchright');
+});
