@@ -77,7 +77,9 @@ export async function refreshSession(refreshToken) {
   const diagnostic = captchaDiagnostic(response, text, "/auth/v1/token");
   if (diagnostic) throw new CaptchaRequiredError(diagnostic);
   if (!response.ok) {
-    throw new Error(`Supabase refresh failed (${response.status}): ${text.slice(0, 160)}`);
+    const error = new Error(`Renouvellement de session WikiMasters impossible (HTTP ${response.status}). ${response.status >= 500 ? 'Le service de connexion rencontre une erreur ; réessaie plus tard.' : 'Reconnecte ton compte si le problème persiste.'}`);
+    error.diagnostic = captchaDiagnostic(response, text, "/auth/v1/token", "POST", true);
+    throw error;
   }
 
   const session = JSON.parse(text);

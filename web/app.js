@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.13-pwa";
+const APP_VERSION = "0.5.14-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
@@ -926,6 +926,7 @@ function renderDiagnostic(status) {
 }
 
 const RELEASE_NOTES = [
+  "Diagnostic navigateur complet : contrôle de la session par les cookies, confirmation du compte si observée, expiration de session, boutons et liens visibles, chargement, erreurs réseau et console, chronologie et conclusions avec leur degré de certitude. Aucun cookie ou jeton exporté.",
   "Rapport navigateur : chronologie en millisecondes, chargement, boutons visibles et désactivés, apparition de la vérification, clic et réponses. Le test attend le bouton jusqu’à 15 secondes.",
   "Après un blocage anti-bot lors d’une ouverture manuelle, le navigateur en arrière-plan tente maintenant un seul clic sur le bouton d’ouverture du site et observe le résultat pendant 25 secondes. Le rapport indique le clic, les réponses et le résultat.",
   "L’Auto Opener reste désactivé après un blocage. Le rapport navigateur contient le blocage initial et le résultat de la nouvelle tentative.",
