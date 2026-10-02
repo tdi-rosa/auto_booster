@@ -1,3 +1,4 @@
+import { openWithBrowserReport } from "../lib/manual-recovery.js";
 import { probeBrowser } from "../lib/browser-probe.js";
 import { CaptchaRequiredError, isCaptchaMessage } from "../lib/captcha.js";
 import webpush from "web-push";
@@ -76,7 +77,7 @@ async function readJson(req) {
 
 function publicClient(client, count = null) {
   return {
-    backendVersion: "0.5.10",
+    backendVersion: "0.5.11",
     requestDiagnostic: client?.requestDiagnostic || null,
     browserDiagnostic: client?.browserDiagnostic || null,
     connected: Boolean(client?.paired),
@@ -163,7 +164,22 @@ async function runClient(clientId, { manual = false } = {}) {
     }
 
     const storedSession = decryptJson(client.encryptedSession);
-    const result = await openAllAvailablePacks(storedSession);
+    const result = manual
+      ? await openWithBrowserReport(storedSession, {
+          open: openAllAvailablePacks,
+          probe: probeBrowser,
+          onBlocked: async (error) => {
+            client.settings = { ...client.settings, enabled: false };
+            client.nextRunAt = null;
+            client.captchaDiagnostic = error.diagnostic;
+            client.requestDiagnostic = error.diagnostic;
+            client.lastError = error.message;
+            await saveClient(client);
+            await unscheduleClient(client.id);
+          }
+        })
+      : await openAllAvailablePacks(storedSession);
+    if (result.browserDiagnostic) client.browserDiagnostic = result.browserDiagnostic;
 
     await appendHistory(client.id, result.cards);
 
@@ -191,6 +207,7 @@ async function runClient(clientId, { manual = false } = {}) {
     const client = await getClient(clientId);
     if (client) {
       client.lastRunAt = Date.now();
+      if (error.browserDiagnostic) client.browserDiagnostic = error.browserDiagnostic;
       if (error.diagnostic) client.requestDiagnostic = {
         ...error.diagnostic,
         run: { manual, packsOpened: error.partialResult?.packsOpened || 0, cardsSaved: error.partialResult?.cards?.length || 0 }
@@ -201,12 +218,12 @@ async function runClient(clientId, { manual = false } = {}) {
         client.settings = { ...client.settings, enabled: false };
         client.nextRunAt = null;
         client.captchaDiagnostic = error.diagnostic;
-        if (error.partialResult) {
-          client.encryptedSession = encryptJson(error.partialResult.session);
-          await appendHistory(client.id, error.partialResult.cards);
-        }
       } else if (client.settings?.enabled) {
         client.nextRunAt = Date.now() + 15 * 60_000;
+      }
+      if (error.partialResult) {
+        client.encryptedSession = encryptJson(error.partialResult.session);
+        await appendHistory(client.id, error.partialResult.cards);
       }
       await saveClient(client);
       await scheduleClient(client);
@@ -242,7 +259,7 @@ export default async function handler(req, res) {
 
   try {
     if (action === "health") {
-      return send(res, 200, { ok: true, service: "wikimaster-auto", version: "0.5.10", commit: process.env.RAILWAY_GIT_COMMIT_SHA || null });
+      return send(res, 200, { ok: true, service: "wikimaster-auto", version: "0.5.11", commit: process.env.RAILWAY_GIT_COMMIT_SHA || null });
     }
 
     if (action === "auth-capabilities") {
