@@ -18,5 +18,9 @@ test('experimental engine is explicit and unknown engines are rejected', async (
   const options=[];const deps={claim:async()=>true,resolve:async()=> 'target',run:async(id,opts)=>{options.push(opts);return {ok:true};},write:()=>{}};
   await runPrivateDebug(JSON.stringify({...JSON.parse(raw),engine:'patchright'}),deps);
   await runPrivateDebug(JSON.stringify({...JSON.parse(raw),engine:'unexpected'}),deps);
-  assert.equal(options.length,1);assert.equal(options[0].browserEngine,'patchright');
+  for (const engine of ['patchright-chrome', 'patchright-chrome-headed']) {
+    await runPrivateDebug(JSON.stringify({...JSON.parse(raw),engine}),deps);
+    assert.equal(options.at(-1).browserEngine,engine);
+  }
+  assert.equal(options.length,3);assert.equal(options[0].browserEngine,'patchright');
 });

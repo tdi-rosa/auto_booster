@@ -5,7 +5,7 @@ export async function runPrivateDebug(raw, { claim, resolve, run, write }) {
   let job;
   try { job = JSON.parse(raw); } catch { write({ status: 'invalid_command' }); return; }
   if (!UUID.test(job?.id || '') || !UUID.test(job?.reportId || '')) { write({ status: 'invalid_command' }); return; }
-  if (job.engine && !['playwright', 'patchright'].includes(job.engine)) { write({ status: 'invalid_engine' }); return; }
+  if (job.engine && !['playwright', 'patchright', 'patchright-chrome', 'patchright-chrome-headed'].includes(job.engine)) { write({ status: 'invalid_engine' }); return; }
   if (!await claim(job.id)) return;
   write({ jobId: job.id, status: 'started' });
   try {

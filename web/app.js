@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.20-pwa";
+const APP_VERSION = "0.5.21-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
@@ -926,6 +926,7 @@ function renderDiagnostic(status) {
 }
 
 const RELEASE_NOTES = [
+  "Essais privés avec Google Chrome : comparaison sans interface et avec affichage virtuel. Le diagnostic indique le navigateur, sa version et le mode utilisé ; chaque essai reste limité à une tentative.",
   "Ajout d’un moteur navigateur expérimental pour les essais privés. Le rapport identifie le moteur utilisé et les limites de collecte des erreurs console.",
   "Une commande privée permet de lancer un essai de diagnostic à distance, une seule fois, sans clic ni export depuis le téléphone.",
   "Les diagnostics navigateur remontent automatiquement dans les journaux privés du backend : plus besoin d’exporter un JSON pour chaque essai. Les identifiants, cookies et jetons sont masqués.",

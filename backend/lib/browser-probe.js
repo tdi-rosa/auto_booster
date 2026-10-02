@@ -11,10 +11,14 @@ import { captchaDiagnostic } from './captcha.js';
 import { buildWikiCookie } from './wiki.js';
 
 export async function probeBrowser(session, { tryOpen = false, engine = 'playwright' } = {}) {
-  const report = { schemaVersion: 3, kind: 'browser_probe', backendVersion: '0.5.20', capturedAt: new Date().toISOString(), mode: 'standard_headless_chromium', outcome: 'starting', requests: [], failures: [], pageErrors: [], verification: null, note: 'Chargement uniquement : aucun clic sur un CAPTCHA ou un bouton d’ouverture, aucun cookie ou jeton exporté.' };
+  const report = { schemaVersion: 3, kind: 'browser_probe', backendVersion: '0.5.21', capturedAt: new Date().toISOString(), mode: 'standard_headless_chromium', outcome: 'starting', requests: [], failures: [], pageErrors: [], verification: null, note: 'Chargement uniquement : aucun clic sur un CAPTCHA ou un bouton d’ouverture, aucun cookie ou jeton exporté.' };
   report.engine = engine;
-  report.mode = engine === 'patchright' ? 'experimental_patchright_headless' : 'standard_headless_chromium';
-  report.consoleCaptureAvailable = engine !== 'patchright';
+  const experimental = engine.startsWith('patchright');
+  const channel = engine.startsWith('patchright-chrome') ? 'chrome' : undefined;
+  const headless = engine !== 'patchright-chrome-headed';
+  report.mode = experimental ? `experimental_${engine}_${headless ? 'headless' : 'headed'}` : 'standard_headless_chromium';
+  report.browserConfiguration = { channel: channel || 'chromium', headless, virtualDisplay: !headless && Boolean(process.env.DISPLAY) };
+  report.consoleCaptureAvailable = !experimental;
   const started = performance.now();
   const elapsed = () => Math.round(performance.now() - started);
   report.timeline = [];
@@ -30,8 +34,8 @@ export async function probeBrowser(session, { tryOpen = false, engine = 'playwri
   const networkCheck = networkDiagnostic();
   let browser;
   try {
-    const browserType = engine === 'patchright' ? (await import('patchright')).chromium : chromium;
-    browser = await browserType.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+    const browserType = experimental ? (await import('patchright')).chromium : chromium;
+    browser = await browserType.launch({ headless, ...(channel ? { channel } : {}), args: ['--no-sandbox', '--disable-dev-shm-usage'] });
     event('browser_ready');
     const context = await browser.newContext();
     await context.addCookies(buildWikiCookie(session).split('; ').map(part => {
