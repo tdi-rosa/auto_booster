@@ -176,3 +176,26 @@ export async function readHistory(clientId, offset = 0, limit = 100) {
 export async function historyCount(clientId) {
   return (await redis()).lLen(historyKey(clientId));
 }
+
+// Resolve only the exact diagnostic selected by the operator. Never export sessions.
+export async function clientForDiagnostic(reportId) {
+  const db = await redis();
+  let matched = null;
+  let count = 0;
+  for await (const batch of db.scanIterator({ MATCH: `${PREFIX}:client:*`, COUNT: 100 })) {
+    for (const key of batch) {
+      if (++count > 1000) return null;
+      const client = await jsonGet(key);
+      if (client?.browserDiagnostic?.reportId === reportId && client.paired && client.encryptedSession) {
+        if (matched) return null;
+        matched = client.id;
+      }
+    }
+  }
+  return matched;
+}
+
+export async function claimDebugJob(id) {
+  // Persist the claim: restarting or redeploying must not repeat an opening.
+  return Boolean(await (await redis()).set(`${PREFIX}:debug-job:${id}`, 'claimed', { NX: true }));
+}

@@ -11,7 +11,7 @@ import { captchaDiagnostic } from './captcha.js';
 import { buildWikiCookie } from './wiki.js';
 
 export async function probeBrowser(session, { tryOpen = false } = {}) {
-  const report = { schemaVersion: 3, kind: 'browser_probe', backendVersion: '0.5.18', capturedAt: new Date().toISOString(), mode: 'standard_headless_chromium', outcome: 'starting', requests: [], failures: [], pageErrors: [], verification: null, note: 'Chargement uniquement : aucun clic sur un CAPTCHA ou un bouton d’ouverture, aucun cookie ou jeton exporté.' };
+  const report = { schemaVersion: 3, kind: 'browser_probe', backendVersion: '0.5.19', capturedAt: new Date().toISOString(), mode: 'standard_headless_chromium', outcome: 'starting', requests: [], failures: [], pageErrors: [], verification: null, note: 'Chargement uniquement : aucun clic sur un CAPTCHA ou un bouton d’ouverture, aucun cookie ou jeton exporté.' };
   const started = performance.now();
   const elapsed = () => Math.round(performance.now() - started);
   report.timeline = [];

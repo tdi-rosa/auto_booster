@@ -1,5 +1,7 @@
 import http from "node:http";
-import handler from "./api/wma.js";
+import handler, { runClient } from "./api/wma.js";
+import { runPrivateDebug } from './lib/private-debug.js';
+import { claimDebugJob, clientForDiagnostic } from './lib/storage.js';
 
 const port = Number(process.env.PORT || 3000);
 
@@ -272,6 +274,10 @@ async function logAuthCapabilities() {
 
 server.listen(port, "0.0.0.0", () => {
   console.log(`WikiMaster Auto backend listening on :${port}`);
+  setTimeout(() => runPrivateDebug(process.env.WMA_PRIVATE_DEBUG_JOB, {
+    claim: claimDebugJob, resolve: clientForDiagnostic, run: runClient,
+    write: result => console.log(JSON.stringify({ event: 'WMA_PRIVATE_DEBUG', ...result }))
+  }).catch(() => console.error('WMA_PRIVATE_DEBUG_UNAVAILABLE')), 2000);
   setTimeout(logAuthCapabilities, 1500);
   setTimeout(probeAuthEndpoints, 1800);
   setTimeout(scanWikiMastersTurnstile, 2500);
