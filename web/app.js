@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.7-pwa";
+const APP_VERSION = "0.5.8-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
@@ -894,10 +894,12 @@ function renderDiagnostic(status) {
     button = document.createElement("button");
     button.id = "captchaDiagnosticButton";
     button.type = "button";
-    button.textContent = "Exporter le dernier diagnostic CAPTCHA";
+    button.textContent = "Exporter le diagnostic du blocage";
     document.querySelector("#openNowButton").insertAdjacentElement("afterend", button);
     button.addEventListener("click", () => {
-      const report = currentStatus?.captchaDiagnostic || {
+      const report = currentStatus?.requestDiagnostic || currentStatus?.captchaDiagnostic || {
+        frontendVersion: APP_VERSION,
+        backendVersion: currentStatus?.backendVersion || "ancien serveur sans version",
         capturedAt: null,
         lastRunAt: currentStatus?.lastRunAt || null,
         provider: "inconnu",
@@ -915,10 +917,11 @@ function renderDiagnostic(status) {
     });
   }
   const normalizedError = String(status?.lastError || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  button.hidden = !status?.captchaDiagnostic && !/captcha|turnstile|anti[ _-]?bot|verification[ _-](humaine|requise)/i.test(normalizedError);
+  button.hidden = !status?.requestDiagnostic && !status?.captchaDiagnostic && !/captcha|turnstile|anti[ _-]?bot|verification[ _-](humaine|requise)/i.test(normalizedError);
 }
 
 const RELEASE_NOTES = [
+  "Rapport enrichi : version serveur, en-têtes techniques, structure de réponse, messages anti-bot et contexte de la tentative.",
   "Correction : les messages « Vérification anti-bot requise » déclenchent maintenant le diagnostic et la désactivation automatique.",
   "Le bouton d’export apparaît aussi pour un ancien blocage, avec un rapport limité si les informations originales n’ont pas été conservées.",
   "Une notification signale le blocage. Le dernier diagnostic CAPTCHA peut être exporté depuis l’application, sans cookies ni jetons de connexion.",

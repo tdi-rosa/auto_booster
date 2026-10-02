@@ -74,6 +74,8 @@ export async function refreshSession(refreshToken) {
   );
 
   const text = await response.text();
+  const diagnostic = captchaDiagnostic(response, text, "/auth/v1/token");
+  if (diagnostic) throw new CaptchaRequiredError(diagnostic);
   if (!response.ok) {
     throw new Error(`Supabase refresh failed (${response.status}): ${text.slice(0, 160)}`);
   }
@@ -172,16 +174,16 @@ async function openOnePack(session) {
       if (response.ok) return body || {};
 
       if (!TRANSIENT.has(response.status)) {
-        throw new Error(
-          `WikiMasters HTTP ${response.status}: ${body?.error || text.slice(0, 160)}`
-        );
+        const error = new Error(`WikiMasters HTTP ${response.status}`);
+        error.diagnostic = captchaDiagnostic(response, text, "/api/packs/open", "POST", true);
+        throw error;
       }
 
       const retryAfter = Number(response.headers.get("retry-after") || 0);
       await sleep(retryAfter > 0 ? retryAfter * 1000 : 700 * (attempt + 1));
       lastError = new Error(`WikiMasters transient HTTP ${response.status}`);
     } catch (error) {
-      if (error instanceof CaptchaRequiredError) throw error;
+      if (error instanceof CaptchaRequiredError || error.diagnostic) throw error;
       lastError = error;
       if (attempt < 2) await sleep(700 * (attempt + 1));
     }

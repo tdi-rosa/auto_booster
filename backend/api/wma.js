@@ -75,6 +75,8 @@ async function readJson(req) {
 
 function publicClient(client, count = null) {
   return {
+    backendVersion: "0.5.8",
+    requestDiagnostic: client?.requestDiagnostic || null,
     connected: Boolean(client?.paired),
     userId: client?.userId || null,
     email: client?.email || null,
@@ -187,6 +189,10 @@ async function runClient(clientId, { manual = false } = {}) {
     const client = await getClient(clientId);
     if (client) {
       client.lastRunAt = Date.now();
+      if (error.diagnostic) client.requestDiagnostic = {
+        ...error.diagnostic,
+        run: { manual, packsOpened: error.partialResult?.packsOpened || 0, cardsSaved: error.partialResult?.cards?.length || 0 }
+      };
       client.lastError =
         error instanceof Error ? error.message : String(error);
       if (error instanceof CaptchaRequiredError) {
@@ -234,7 +240,7 @@ export default async function handler(req, res) {
 
   try {
     if (action === "health") {
-      return send(res, 200, { ok: true, service: "wikimaster-auto" });
+      return send(res, 200, { ok: true, service: "wikimaster-auto", version: "0.5.8", commit: process.env.RAILWAY_GIT_COMMIT_SHA || null });
     }
 
     if (action === "auth-capabilities") {
