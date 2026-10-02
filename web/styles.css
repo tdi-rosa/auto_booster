@@ -967,3 +967,9 @@ body.modal-open { overflow:hidden; }
   .new-card-arrow-left { left:-8px; }
   .new-card-arrow-right { right:-8px; }
 }
+
+/* Version notes */
+dialog { max-width: min(92vw, 480px); border: 1px solid #586078; border-radius: 20px; padding: 24px; background: #171b2c; color: #f0f2ff; }
+dialog::backdrop { background: #000a; }
+dialog li { margin-bottom: 14px; line-height: 1.5; }
+dialog button, #captchaDiagnosticButton { padding: 12px 16px; border-radius: 12px; margin-top: 12px; cursor: pointer; }

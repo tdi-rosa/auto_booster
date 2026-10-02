@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.5-pwa";
+const APP_VERSION = "0.5.6-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
@@ -179,6 +179,7 @@ function renderStatus(status) {
     localStorage.setItem(STORAGE.rarity, String(status.settings.minRank));
   }
 
+  renderDiagnostic(status);
   renderNextRun(status);
   renderLastRun(status);
 }
@@ -359,6 +360,7 @@ async function openNow() {
     ]);
   } catch (error) {
     toast(error.payload?.error || "L’ouverture a échoué.");
+    await refreshStatus({ quiet: true });
   } finally {
     button.textContent = oldText;
     button.disabled = !currentStatus?.connected;
@@ -884,3 +886,57 @@ setInterval(checkDeploymentVersion, 5 * 60 * 1000);
 setInterval(() => {
   if (currentStatus) renderNextRun(currentStatus);
 }, 30 * 1000);
+
+
+function renderDiagnostic(status) {
+  let button = document.querySelector("#captchaDiagnosticButton");
+  if (!button) {
+    button = document.createElement("button");
+    button.id = "captchaDiagnosticButton";
+    button.type = "button";
+    button.textContent = "Exporter le dernier diagnostic CAPTCHA";
+    document.querySelector("#openNowButton").insertAdjacentElement("afterend", button);
+    button.addEventListener("click", () => {
+      const report = currentStatus?.captchaDiagnostic;
+      if (!report) return;
+      const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: "application/json" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "wikimaster-captcha-diagnostic.json";
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+  }
+  button.hidden = !status?.captchaDiagnostic;
+}
+
+const RELEASE_NOTES = [
+  "L’Auto Opener se désactive lorsqu’un CAPTCHA est détecté et arrête les tentatives automatiques.",
+  "Une notification signale le blocage. Le dernier diagnostic CAPTCHA peut être exporté depuis l’application, sans cookies ni jetons de connexion.",
+  "Les cartes obtenues avant le blocage restent dans l’historique.",
+  "Les nouveautés s’affichent au premier lancement après une mise à jour."
+];
+function showReleaseNotes() {
+  const key = "wma_release_notes_seen";
+  if (localStorage.getItem(key) === APP_VERSION) return;
+  const dialog = document.createElement("dialog");
+  const title = document.createElement("h2");
+  title.textContent = `Nouveautés · ${APP_VERSION}`;
+  const list = document.createElement("ul");
+  RELEASE_NOTES.forEach(note => {
+    const item = document.createElement("li");
+    item.textContent = note;
+    list.append(item);
+  });
+  const close = document.createElement("button");
+  close.textContent = "Compris";
+  close.addEventListener("click", () => dialog.close());
+  dialog.append(title, list, close);
+  document.body.append(dialog);
+  dialog.addEventListener("close", () => {
+    localStorage.setItem(key, APP_VERSION);
+    dialog.remove();
+  });
+  dialog.showModal();
+}
+showReleaseNotes();

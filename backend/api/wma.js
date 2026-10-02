@@ -1,3 +1,4 @@
+import { CaptchaRequiredError } from "../lib/captcha.js";
 import webpush from "web-push";
 import {
   browserClick,
@@ -74,6 +75,7 @@ function publicClient(client, count = null) {
     lastRunAt: client?.lastRunAt || null,
     nextRunAt: client?.nextRunAt || null,
     lastError: client?.lastError || null,
+    captchaDiagnostic: client?.captchaDiagnostic || null,
     historyCount: count
   };
 }
@@ -142,6 +144,11 @@ async function runClient(clientId, { manual = false } = {}) {
       return { ok: false, skipped: true, reason: "not_paired" };
     }
 
+    if (!manual && !client.settings?.enabled) {
+      await unscheduleClient(clientId);
+      return { ok: false, skipped: true, reason: "disabled" };
+    }
+
     const storedSession = decryptJson(client.encryptedSession);
     const result = await openAllAvailablePacks(storedSession);
 
@@ -173,11 +180,28 @@ async function runClient(clientId, { manual = false } = {}) {
       client.lastRunAt = Date.now();
       client.lastError =
         error instanceof Error ? error.message : String(error);
-      if (client.settings?.enabled) {
+      if (error instanceof CaptchaRequiredError) {
+        client.settings = { ...client.settings, enabled: false };
+        client.nextRunAt = null;
+        client.captchaDiagnostic = error.diagnostic;
+        if (error.partialResult) {
+          client.encryptedSession = encryptJson(error.partialResult.session);
+          await appendHistory(client.id, error.partialResult.cards);
+        }
+      } else if (client.settings?.enabled) {
         client.nextRunAt = Date.now() + 15 * 60_000;
       }
       await saveClient(client);
       await scheduleClient(client);
+      if (error instanceof CaptchaRequiredError && client.pushSubscription && configurePush()) {
+        try {
+          await webpush.sendNotification(client.pushSubscription, JSON.stringify({
+            title: "Auto Opener désactivé · CAPTCHA",
+            body: "Une vérification humaine est nécessaire sur WikiMasters. Diagnostic disponible dans l’application.",
+            url: "https://tdi-rosa.github.io/auto_booster/"
+          }));
+        } catch {}
+      }
     }
 
     return {

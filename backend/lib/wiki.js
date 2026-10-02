@@ -1,3 +1,4 @@
+import { captchaDiagnostic, CaptchaRequiredError } from "./captcha.js";
 import {
   COOKIE_BASE,
   SITE_URL,
@@ -165,6 +166,9 @@ async function openOnePack(session) {
       let body = null;
       try { body = text ? JSON.parse(text) : null; } catch {}
 
+      const diagnostic = captchaDiagnostic(response, text, "/api/packs/open");
+      if (diagnostic) throw new CaptchaRequiredError(diagnostic);
+
       if (response.ok) return body || {};
 
       if (!TRANSIENT.has(response.status)) {
@@ -177,6 +181,7 @@ async function openOnePack(session) {
       await sleep(retryAfter > 0 ? retryAfter * 1000 : 700 * (attempt + 1));
       lastError = new Error(`WikiMasters transient HTTP ${response.status}`);
     } catch (error) {
+      if (error instanceof CaptchaRequiredError) throw error;
       lastError = error;
       if (attempt < 2) await sleep(700 * (attempt + 1));
     }
@@ -208,7 +213,11 @@ export async function openAllAvailablePacks(storedSession) {
   let packsRemaining = null;
 
   for (let index = 0; index < 10; index += 1) {
-    const result = await openOnePack(session);
+    let result;
+    try { result = await openOnePack(session); } catch (error) {
+      if (error instanceof CaptchaRequiredError) error.partialResult = { session, cards, packsOpened };
+      throw error;
+    }
     packsOpened += 1;
 
     if (Array.isArray(result.cards)) {
