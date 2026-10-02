@@ -7,7 +7,7 @@
     "node": "22.x"
   },
   "scripts": {
-    "start": "node server.js",
+    "start": "node browser-smoke.js && node server.js",
     "check": "node --check server.js && node --check api/wma.js && node --check lib/config.js && node --check lib/security.js && node --check lib/storage.js && node --check lib/wiki.js && node --check lib/browser-login.js",
     "postinstall": "npx playwright install --with-deps chromium"
   },
