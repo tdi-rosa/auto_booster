@@ -1,3 +1,4 @@
+import { redactDiagnostic } from './redact-diagnostic.js';
 import { networkDiagnostic, isNonFatalDnsProbe } from './network-diagnostic.js';
 import { findPackLink } from './pack-navigation.js';
 import { publicResource, safeRoute, reportFindings } from './browser-report.js';
@@ -9,7 +10,7 @@ import { captchaDiagnostic } from './captcha.js';
 import { buildWikiCookie } from './wiki.js';
 
 export async function probeBrowser(session, { tryOpen = false } = {}) {
-  const report = { schemaVersion: 3, kind: 'browser_probe', backendVersion: '0.5.16', capturedAt: new Date().toISOString(), mode: 'standard_headless_chromium', outcome: 'starting', requests: [], failures: [], pageErrors: [], verification: null, note: 'Chargement uniquement : aucun clic sur un CAPTCHA ou un bouton d’ouverture, aucun cookie ou jeton exporté.' };
+  const report = { schemaVersion: 3, kind: 'browser_probe', backendVersion: '0.5.17', capturedAt: new Date().toISOString(), mode: 'standard_headless_chromium', outcome: 'starting', requests: [], failures: [], pageErrors: [], verification: null, note: 'Chargement uniquement : aucun clic sur un CAPTCHA ou un bouton d’ouverture, aucun cookie ou jeton exporté.' };
   const started = performance.now();
   const elapsed = () => Math.round(performance.now() - started);
   report.timeline = [];
@@ -17,6 +18,8 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
   const expiresAt = Number(session.expires_at || jwtPayload(session.access_token)?.exp || 0);
   report.authentication = { accessTokenPresent: Boolean(session.access_token), refreshTokenPresent: Boolean(session.refresh_token), expiresInSeconds: expiresAt ? Math.round(expiresAt - Date.now() / 1000) : null, accountMatch: null, cookieCheck: null };
   report.consoleErrors = [];
+  const secrets = [session.access_token, session.refresh_token, session.user?.id, session.user?.email, expectedAccount, ...buildWikiCookie(session).split('; ').map(part => part.slice(part.indexOf('=') + 1))];
+  const redact = text => redactDiagnostic(text, secrets);
   report.truncated = { requests: false, timeline: false };
   report.limits = { buttonWaitMs: 15000, observationMs: 25000 };
   const event = (name, details = {}) => { if (report.timeline.length < 100) report.timeline.push({ elapsedMs: elapsed(), event: name, ...details }); else report.truncated.timeline = true; };
@@ -34,9 +37,9 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
     const page = await context.newPage();
     report.runtime = { chromiumVersion: browser.version(), viewport: page.viewportSize() };
     page.on('console', message => {
-      if (!['error', 'warning'].includes(message.type()) || report.consoleErrors.length >= 20) return;
+      if (!['error', 'warning'].includes(message.type()) || report.consoleErrors.length >= 50) return;
       const turnstileCode = /turnstile|cloudflare/i.test(message.text()) ? message.text().match(/\b[1-9]\d{5}\b/)?.[0] || null : null;
-      report.consoleErrors.push({ turnstileCode, elapsedMs: elapsed(), level: message.type(), category: /cors|cross.origin/i.test(message.text()) ? 'cors' : /network|fetch|load|resource/i.test(message.text()) ? 'resource_loading' : 'other' });
+      report.consoleErrors.push({ message: redact(message.text()), source: publicResource(message.location().url), turnstileCode, elapsedMs: elapsed(), level: message.type(), category: /cors|cross.origin/i.test(message.text()) ? 'cors' : /network|fetch|load|resource/i.test(message.text()) ? 'resource_loading' : 'other' });
     });
     const pendingRequests = new Set();
     page.on('request', request => pendingRequests.add(request));
@@ -76,7 +79,7 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
       if (report.failures.length < 20) report.failures.push({ elapsedMs: elapsed(), ...publicResource(request.url()), method: request.method(), type: request.resourceType(), interpretation: isNonFatalDnsProbe(request.url(), request.failure()?.errorText) ? 'expected_nonfatal_dns_probe' : 'unclassified_network_failure', reason: request.failure()?.errorText?.replace(/https?:\/\/\S+/g, '[URL]') || 'failed' });
     });
     page.on('pageerror', error => {
-      if (report.pageErrors.length < 20) report.pageErrors.push({ elapsedMs: elapsed(), name: error.name, category: /network|fetch|load/i.test(error.message) ? 'resource_loading' : 'javascript_error' });
+      if (report.pageErrors.length < 20) report.pageErrors.push({ message: redact(error.message), elapsedMs: elapsed(), name: error.name, category: /network|fetch|load/i.test(error.message) ? 'resource_loading' : 'javascript_error' });
     });
     const snapshot = async (phase) => {
       const state = await page.evaluate(() => {
@@ -98,6 +101,14 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
     const response = await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 25000 });
     report.documentStatus = response?.status() || null;
     event('navigation_complete', { status: report.documentStatus, route: safeRoute(page.url()) });
+    report.compatibility = await page.evaluate(() => {
+      const canvas = document.createElement('canvas');
+      let webglAvailable = false;
+      try { webglAvailable = Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl')); } catch {}
+      let sessionStorageAvailable = false;
+      try { const key = '__wma_check_' + crypto.randomUUID(); sessionStorage.setItem(key, '1'); sessionStorageAvailable = sessionStorage.getItem(key) === '1'; sessionStorage.removeItem(key); } catch {}
+      return { cookiesEnabled: navigator.cookieEnabled, sessionStorageAvailable, webglAvailable, webAssemblyAvailable: typeof WebAssembly !== 'undefined', secureContext: isSecureContext, userAgent: navigator.userAgent, browserAutomationReported: navigator.webdriver };
+    });
     await snapshot('initial_document');
     let route = null;
     for (let i = 0; i < 6 && !route; i++) {
@@ -157,6 +168,17 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
     }
     if (tryOpen && !report.navigation.reached) report.opening.reason = route ? 'packs_navigation_redirected' : 'packs_navigation_link_not_found';
     await Promise.allSettled(responseTasks);
+    report.frames = [];
+    for (const frame of page.frames().slice(0, 12)) {
+      try {
+        const state = await frame.evaluate(() => {
+          const visible = el => Boolean(el.getClientRects().length) && getComputedStyle(el).visibility !== 'hidden';
+          const text = document.body?.innerText || '';
+          return { readyState: document.readyState, visibleCheckboxCount: [...document.querySelectorAll('input[type="checkbox"],[role="checkbox"]')].filter(visible).length, verificationTextVisible: /verify|human|vérification|verification/i.test(text), errorLines: text.split('\n').filter(line => /error|erreur|failed|échec|unsupported|non pris en charge|timed out/i.test(line)).slice(0, 6).map(line => line.slice(0, 500)) };
+        });
+        report.frames.push({ ...publicResource(frame.url()), ...state, errorLines: state.errorLines.map(redact) });
+      } catch { report.frames.push({ ...publicResource(frame.url()), inspection: 'unavailable' }); }
+    }
     await snapshot('final_page');
     report.pendingRequestCount = pendingRequests.size;
     report.authentication.finalCookieCount = (await context.cookies(SITE_URL)).length;
