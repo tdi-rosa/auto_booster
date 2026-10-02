@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.8-pwa";
+const APP_VERSION = "0.5.9-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
@@ -921,6 +921,7 @@ function renderDiagnostic(status) {
 }
 
 const RELEASE_NOTES = [
+  "Nouveau test navigateur en arrière-plan avec rapport exportable. Il charge la page sans ouvrir de booster ni interagir avec la vérification.",
   "Rapport enrichi : version serveur, en-têtes techniques, structure de réponse, messages anti-bot et contexte de la tentative.",
   "Correction : les messages « Vérification anti-bot requise » déclenchent maintenant le diagnostic et la désactivation automatique.",
   "Le bouton d’export apparaît aussi pour un ancien blocage, avec un rapport limité si les informations originales n’ont pas été conservées.",
@@ -965,3 +966,40 @@ function refreshOnResume() {
 window.addEventListener("focus", refreshOnResume);
 window.addEventListener("pageshow", refreshOnResume);
 setInterval(refreshOnResume, 30_000);
+
+const probeButton = document.createElement("button");
+probeButton.type = "button";
+probeButton.className = "button secondary full-width";
+probeButton.textContent = "Tester le navigateur en arrière-plan";
+document.querySelector("#openNowButton").insertAdjacentElement("afterend", probeButton);
+probeButton.addEventListener("click", async () => {
+  probeButton.disabled = true;
+  probeButton.textContent = "Test du navigateur…";
+  try {
+    const result = await api("browser-probe", { method: "POST" });
+    const messages = {
+      page_loaded: "Page chargée. Cela ne prouve pas que l’ouverture des boosters est autorisée.",
+      verification_detected_stopped: "Vérification détectée : test arrêté.",
+      login_required: "La page demande une connexion.",
+      browser_error: "Erreur du navigateur : consulte le rapport."
+    };
+    toast(messages[result.report.outcome] || "Test terminé.");
+    await refreshStatus({ quiet: true });
+  } catch (error) { toast(error.message); }
+  finally { probeButton.disabled = false; probeButton.textContent = "Tester le navigateur en arrière-plan"; }
+});
+const browserExport = document.createElement("button");
+browserExport.type = "button";
+browserExport.className = "button secondary full-width";
+browserExport.textContent = "Exporter le test navigateur";
+probeButton.insertAdjacentElement("afterend", browserExport);
+browserExport.addEventListener("click", () => {
+  const report = currentStatus?.browserDiagnostic;
+  if (!report) return toast("Lance d’abord un test navigateur.");
+  const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "wikimaster-browser-diagnostic.json";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});

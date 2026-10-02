@@ -1,3 +1,4 @@
+import { probeBrowser } from "../lib/browser-probe.js";
 import { CaptchaRequiredError, isCaptchaMessage } from "../lib/captcha.js";
 import webpush from "web-push";
 import {
@@ -75,8 +76,9 @@ async function readJson(req) {
 
 function publicClient(client, count = null) {
   return {
-    backendVersion: "0.5.8",
+    backendVersion: "0.5.9",
     requestDiagnostic: client?.requestDiagnostic || null,
+    browserDiagnostic: client?.browserDiagnostic || null,
     connected: Boolean(client?.paired),
     userId: client?.userId || null,
     email: client?.email || null,
@@ -240,7 +242,7 @@ export default async function handler(req, res) {
 
   try {
     if (action === "health") {
-      return send(res, 200, { ok: true, service: "wikimaster-auto", version: "0.5.8", commit: process.env.RAILWAY_GIT_COMMIT_SHA || null });
+      return send(res, 200, { ok: true, service: "wikimaster-auto", version: "0.5.9", commit: process.env.RAILWAY_GIT_COMMIT_SHA || null });
     }
 
     if (action === "auth-capabilities") {
@@ -516,6 +518,19 @@ export default async function handler(req, res) {
       client.pushSubscription = body.subscription;
       await saveClient(client);
       return send(res, 200, { ok: true });
+    }
+
+    if (action === "browser-probe" && req.method === "POST") {
+      if (!client.paired || !client.encryptedSession) return send(res, 409, { error: "not_connected" });
+      const lock = await acquireClientLock(client.id);
+      if (!lock) return send(res, 409, { error: "already_running" });
+      try {
+        const report = await probeBrowser(decryptJson(client.encryptedSession));
+        const fresh = await getClient(client.id);
+        fresh.browserDiagnostic = report;
+        await saveClient(fresh);
+        return send(res, 200, { report });
+      } finally { await releaseClientLock(client.id, lock); }
     }
 
     if (action === "open-now" && req.method === "POST") {
