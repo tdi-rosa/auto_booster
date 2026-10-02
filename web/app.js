@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.12-pwa";
+const APP_VERSION = "0.5.13-pwa";
 const BACKEND_URL = String(window.WMA_BACKEND_URL || "").replace(/\/$/, "");
 
 const STORAGE = {
@@ -335,7 +335,11 @@ async function openNow() {
   const button = $("#openNowButton");
   button.disabled = true;
   const oldText = button.textContent;
-  button.textContent = "Ouverture en cours…";
+  const openingStarted = Date.now();
+  button.textContent = "Ouverture en cours… 0 s";
+  const openingTimer = setInterval(() => {
+    button.textContent = `Ouverture en cours… ${Math.floor((Date.now() - openingStarted) / 1000)} s`;
+  }, 1000);
 
   try {
     const result = await api("open-now", { method: "POST" });
@@ -362,6 +366,7 @@ async function openNow() {
     toast(error.payload?.error || "L’ouverture a échoué.");
     await refreshStatus({ quiet: true });
   } finally {
+    clearInterval(openingTimer);
     button.textContent = oldText;
     button.disabled = !currentStatus?.connected;
   }
@@ -921,6 +926,7 @@ function renderDiagnostic(status) {
 }
 
 const RELEASE_NOTES = [
+  "Rapport navigateur : chronologie en millisecondes, chargement, boutons visibles et désactivés, apparition de la vérification, clic et réponses. Le test attend le bouton jusqu’à 15 secondes.",
   "Après un blocage anti-bot lors d’une ouverture manuelle, le navigateur en arrière-plan tente maintenant un seul clic sur le bouton d’ouverture du site et observe le résultat pendant 25 secondes. Le rapport indique le clic, les réponses et le résultat.",
   "L’Auto Opener reste désactivé après un blocage. Le rapport navigateur contient le blocage initial et le résultat de la nouvelle tentative.",
   "Nouveau test navigateur en arrière-plan avec rapport exportable. Il charge la page sans ouvrir de booster ni interagir avec la vérification.",

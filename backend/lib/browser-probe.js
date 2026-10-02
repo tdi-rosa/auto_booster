@@ -1,3 +1,4 @@
+import { waitForOpeningButton } from './button-wait.js';
 import { chromium } from 'playwright';
 import { SITE_URL } from './config.js';
 import { captchaDiagnostic } from './captcha.js';
@@ -12,10 +13,16 @@ function publicUrl(raw) {
 }
 
 export async function probeBrowser(session, { tryOpen = false } = {}) {
-  const report = { schemaVersion: 1, kind: 'browser_probe', backendVersion: '0.5.12', capturedAt: new Date().toISOString(), mode: 'standard_headless_chromium', outcome: 'starting', requests: [], failures: [], pageErrors: [], verification: null, note: 'Chargement uniquement : aucun clic sur un CAPTCHA ou un bouton d’ouverture, aucun cookie ou jeton exporté.' };
+  const report = { schemaVersion: 2, kind: 'browser_probe', backendVersion: '0.5.13', capturedAt: new Date().toISOString(), mode: 'standard_headless_chromium', outcome: 'starting', requests: [], failures: [], pageErrors: [], verification: null, note: 'Chargement uniquement : aucun clic sur un CAPTCHA ou un bouton d’ouverture, aucun cookie ou jeton exporté.' };
+  const started = performance.now();
+  const elapsed = () => Math.round(performance.now() - started);
+  report.timeline = [];
+  report.limits = { buttonWaitMs: 15000, observationMs: 25000 };
+  const event = (name, details = {}) => { if (report.timeline.length < 100) report.timeline.push({ elapsedMs: elapsed(), event: name, ...details }); };
   let browser;
   try {
     browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+    event('browser_ready');
     const context = await browser.newContext();
     await context.addCookies(buildWikiCookie(session).split('; ').map(part => {
       const eq = part.indexOf('=');
@@ -30,7 +37,8 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
       responseTasks.push((async () => {
         const text = await response.text();
         const diagnostic = captchaDiagnostic({ status: response.status(), statusText: response.statusText(), ok: response.ok(), redirected: false, headers: new Headers(await response.allHeaders()) }, text, '/api/packs/open', 'POST', true);
-        report.opening.responses.push({ status: response.status(), diagnostic });
+        event('opening_response', { status: response.status() });
+        report.opening.responses.push({ elapsedMs: elapsed(), status: response.status(), diagnostic });
         if (response.ok()) {
           const body = JSON.parse(text);
           if (Array.isArray(body.cards)) openingResult = { session, packsOpened: 1, packsRemaining: body.packs_remaining ?? null, cards: body.cards.map(card => ({ cardId: card.id || null, title: card.wikipedia_title || card.title || 'Carte', wikipediaUrl: card.wikipedia_url || null, imageUrl: card.image_url || null, category: card.category || null, rarity: String(card.rarity || 'C').toUpperCase(), atk: card.atk ?? null, def: card.def ?? null, pulledAt: Date.now() })) };
@@ -38,28 +46,67 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
       })().catch(() => { report.opening.responseReadFailed = true; }));
     });
     page.on('response', response => {
-      if (report.requests.length < 60) report.requests.push({ ...publicUrl(response.url()), status: response.status(), type: response.request().resourceType() });
+      if (report.requests.length < 100) report.requests.push({ elapsedMs: elapsed(), ...publicUrl(response.url()), status: response.status(), type: response.request().resourceType() });
     });
     page.on('requestfailed', request => {
-      if (report.failures.length < 20) report.failures.push({ ...publicUrl(request.url()), reason: request.failure()?.errorText?.replace(/https?:\/\/\S+/g, '[URL]') || 'failed' });
+      if (report.failures.length < 20) report.failures.push({ elapsedMs: elapsed(), ...publicUrl(request.url()), reason: request.failure()?.errorText?.replace(/https?:\/\/\S+/g, '[URL]') || 'failed' });
     });
     page.on('pageerror', error => {
-      if (report.pageErrors.length < 20) report.pageErrors.push({ name: error.name, category: /network|fetch|load/i.test(error.message) ? 'resource_loading' : 'javascript_error' });
+      if (report.pageErrors.length < 20) report.pageErrors.push({ elapsedMs: elapsed(), name: error.name, category: /network|fetch|load/i.test(error.message) ? 'resource_loading' : 'javascript_error' });
     });
+    const snapshot = async (phase) => {
+      const state = await page.evaluate(() => {
+        const visible = el => Boolean(el.getClientRects().length) && getComputedStyle(el).visibility !== 'hidden';
+        const clean = text => String(text || '').replace(/https?:\/\/\S+|[\w.+-]+@[\w.-]+\.\w+|[A-Za-z0-9_-]{30,}/g, '[masqué]').replace(/\s+/g, ' ').trim().slice(0, 100);
+        const buttons = [...document.querySelectorAll('button,[role="button"]')].filter(visible);
+        const openingButtons = buttons.filter(el => /ouvrir|open|booster|paquet|pack/i.test(el.innerText + ' ' + el.getAttribute('aria-label'))).slice(0, 12).map(el => ({ label: clean(el.getAttribute('aria-label') || el.innerText), disabled: el.matches(':disabled') || el.getAttribute('aria-disabled') === 'true' }));
+        return { readyState: document.readyState, visibleButtonCount: buttons.length, openingButtons, verificationVisible: /vérification rapide|verification rapide|anti.bot|verify you are human/i.test(document.body.innerText), loginFormVisible: [...document.querySelectorAll('input[type="password"]')].some(visible) };
+      });
+      const path = new URL(page.url()).pathname;
+      event('page_state', { phase, route: /^\/(packs|profile|profil)(?:\/|$)/.test(path) ? path.split('/').slice(0, 2).join('/') : path === '/' ? '/' : 'other', ...state });
+      return state;
+    };
+    page.on('domcontentloaded', () => event('domcontentloaded'));
+    page.on('load', () => event('load'));
+    event('navigation_start');
     const response = await page.goto(SITE_URL, { waitUntil: 'domcontentloaded', timeout: 25000 });
     report.documentStatus = response?.status() || null;
-    const route = await page.locator('a[href]').evaluateAll(links => links.map(a => a.getAttribute('href')).find(href => /^\/(packs|profile|profil)(?:\/|$)/.test(href || '')) || null);
+    await snapshot('initial_document');
+    let route = null;
+    for (let i = 0; i < 6 && !route; i++) {
+      route = await page.locator('a[href]').evaluateAll(links => {
+        const routes = links.map(a => a.getAttribute('href')).filter(href => /^\/(packs|profile|profil)(?:\/|$)/.test(href || ''));
+        return routes.find(href => /^\/packs(?:\/|$)/.test(href)) || routes[0] || null;
+      });
+      if (!route) await page.waitForTimeout(1000);
+    }
+    event('route_discovery', { found: Boolean(route) });
     if (route) await page.goto(new URL(route, SITE_URL).href, { waitUntil: 'domcontentloaded', timeout: 15000 });
     await page.waitForTimeout(2500);
     if (tryOpen) {
       report.note = 'Un seul clic sur le bouton d’ouverture du site. Observation de la vérification automatique sans interaction avec le CAPTCHA. Aucun cookie ou jeton exporté.';
-      const button = page.getByRole('button', { name: /^(ouvrir|open)\s+(un\s+|1\s+|a\s+)?(booster|paquet|pack)(?:\s|$)/i }).filter({ visible: true }).first();
-      if (await button.count() && await button.isEnabled()) {
-        report.opening.clicked = true;
+      const button = page.getByRole('button', { name: /^(ouvrir|open)\s+(un\s+|le\s+|1\s+|a\s+|the\s+)?(booster|paquet|pack)(?:\s|$)/i }).filter({ visible: true }).first();
+      event('button_wait_start');
+      const { ready, seen, waitedMs } = await waitForOpeningButton({
+        button, snapshot, now: elapsed, sleep: ms => page.waitForTimeout(ms), timeoutMs: report.limits.buttonWaitMs
+      });
+      report.opening.buttonWaitMs = waitedMs;
+      if (ready) {
+        event('button_ready');
         await button.click({ timeout: 5000 });
-        for (let i = 0; i < 25 && !openingResult; i++) await page.waitForTimeout(1000);
+        report.opening.clicked = true;
+        event('button_clicked');
+        const observeStarted = elapsed();
+        while (elapsed() - observeStarted < report.limits.observationMs && !openingResult) {
+          await snapshot('after_click');
+          await page.waitForTimeout(1000);
+        }
         await Promise.allSettled(responseTasks);
-      } else report.opening.reason = 'opening_button_not_found_or_disabled';
+        event('observation_finished', { confirmed: Boolean(openingResult) });
+      } else {
+        report.opening.reason = seen ? 'opening_button_disabled' : 'opening_button_not_found';
+        event('button_wait_finished', { reason: report.opening.reason });
+      }
     }
     report.verification = await page.evaluate(() => ({
       visiblePrompt: /vérification rapide|verification rapide|anti.bot|verify you are human/i.test(document.body.innerText),
@@ -77,6 +124,9 @@ export async function probeBrowser(session, { tryOpen = false } = {}) {
     report.error = { name: error.name, category: /shared libraries|lib[^ ]+\.so/i.test(error.message) ? 'missing_system_library' : /executable.*exist/i.test(error.message) ? 'missing_browser_binary' : /executable|launch/i.test(error.message) ? 'browser_launch' : /timeout/i.test(error.message) ? 'timeout' : 'navigation_or_runtime' };
   } finally {
     if (browser) await browser.close().catch(() => {});
+    report.durationMs = elapsed();
+    report.completedAt = new Date().toISOString();
+    event('finished', { outcome: report.outcome });
   }
   return report;
 }
